@@ -98,7 +98,7 @@
 - name: "ISE | Get recent authentication status"
   ansible.builtin.uri:
     url: >-
-      https://{{ ise_mnt_hostname }}/admin/API/mnt/AuthStatus/MACAddress/0/{{ ise_authentication_status_seconds }}/{{ ise_authentication_status_records }}/All/FALSE
+      https://{{ ise_mnt_hostname }}/admin/API/mnt/AuthStatus/MACAddress/0/{{ ise_authentication_status_seconds }}/{{ ise_authentication_status_records }}/All
     method: GET
     url_username: "{{ ise_username }}"
     url_password: "{{ ise_password }}"

@@ -26,22 +26,24 @@
       ise_anc_action=apply|clear, and ise_anc_confirm=ANC.
 
 - name: "ISE ANC | Build endpoint URL"
+  # ERS endpoint resource has no `name` field — only filter on mac.EQ
+  # when the input is a MAC. Non-MAC inputs fall back to a full scan;
+  # the downstream candidate resolver narrows via session data.
   ansible.builtin.set_fact:
     _ise_anc_endpoint_filter_clauses: >-
       {{
         ['mac.EQ.' ~ (_ise_anc_lookup | upper)]
         if _ise_anc_lookup is match('^[0-9A-Fa-f]{2}([:-]?[0-9A-Fa-f]{2}){5}$')
-        else ['mac.CONTAINS.' ~ _ise_anc_lookup, 'name.CONTAINS.' ~ _ise_anc_lookup]
+        else []
       }}
   changed_when: false
 
 - name: "ISE ANC | Assemble endpoint URL"
   ansible.builtin.set_fact:
     _ise_anc_endpoint_url: >-
-      https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/endpoint?{{
-        (_ise_anc_endpoint_filter_clauses | map('regex_replace', '^', 'filter=') | list
-         + (['filterType=OR'] if _ise_anc_endpoint_filter_clauses | length > 1 else []))
-        | join('&') }}
+      https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/endpoint{%
+        if _ise_anc_endpoint_filter_clauses | length > 0
+      %}?{{ _ise_anc_endpoint_filter_clauses | map('regex_replace', '^', 'filter=') | join('&') }}{% endif %}
   changed_when: false
 
 - name: "ISE ANC | Get endpoint inventory"
@@ -156,14 +158,21 @@
       Lookup first.
 
 - name: "ISE ANC | Select target and build request"
+  # Body shape verified against ciscoisesdk/api/v3_1_patch_1/anc_endpoint.py:
+  #   {OperationAdditionalData: {additionalData: [{name, value}, ...]}}
+  # Only the `apply` action carries policyName; `clear` only needs the MAC.
   ansible.builtin.set_fact:
     _ise_anc_target: "{{ _ise_anc_candidates[0] }}"
     _ise_anc_url: >-
       https://{{ ise_pan_hostname }}/ers/config/ancendpoint/{{ _ise_anc_action }}
     _ise_anc_body:
-      ErsAncEndpoint:
-        macAddress: "{{ _ise_anc_candidates[0].mac | upper }}"
-        policyName: "{{ _ise_anc_policy_name }}"
+      OperationAdditionalData:
+        additionalData: >-
+          {{
+            [{'name': 'macAddress', 'value': (_ise_anc_candidates[0].mac | upper)}]
+            + ([{'name': 'policyName', 'value': _ise_anc_policy_name}]
+                if _ise_anc_action == 'apply' else [])
+          }}
   changed_when: false
 
 - name: "ISE ANC | Show target"
@@ -194,7 +203,6 @@
     headers:
       Accept: application/json
       Content-Type: application/json
-      ERS-Media-Type: anc.ancendpoint.1.0
   become: false
   register: _ise_anc_result
   changed_when: _ise_anc_result.status in [200, 201, 202, 204]

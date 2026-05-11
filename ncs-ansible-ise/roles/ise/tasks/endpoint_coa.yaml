@@ -28,22 +28,24 @@
       ise_coa_action.
 
 - name: "ISE CoA | Build endpoint URL"
+  # ERS endpoint resource has no `name` field — only filter on mac.EQ
+  # when the input is a MAC. Non-MAC inputs fall back to a full scan
+  # the downstream candidate resolver narrows via session data.
   ansible.builtin.set_fact:
     _ise_coa_endpoint_filter_clauses: >-
       {{
         ['mac.EQ.' ~ (_ise_coa_lookup | upper)]
         if _ise_coa_lookup is match('^[0-9A-Fa-f]{2}([:-]?[0-9A-Fa-f]{2}){5}$')
-        else ['mac.CONTAINS.' ~ _ise_coa_lookup, 'name.CONTAINS.' ~ _ise_coa_lookup]
+        else []
       }}
   changed_when: false
 
 - name: "ISE CoA | Assemble endpoint URL"
   ansible.builtin.set_fact:
     _ise_coa_endpoint_url: >-
-      https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/endpoint?{{
-        (_ise_coa_endpoint_filter_clauses | map('regex_replace', '^', 'filter=') | list
-         + (['filterType=OR'] if _ise_coa_endpoint_filter_clauses | length > 1 else []))
-        | join('&') }}
+      https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/endpoint{%
+        if _ise_coa_endpoint_filter_clauses | length > 0
+      %}?{{ _ise_coa_endpoint_filter_clauses | map('regex_replace', '^', 'filter=') | join('&') }}{% endif %}
   changed_when: false
 
 - name: "ISE CoA | Get endpoint inventory"

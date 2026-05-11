@@ -103,11 +103,16 @@ def _parse_mnt_xml_rows(content: str) -> list[dict[str, Any]]:
     if not children:
         return []
 
-    # If the first child has children of its own, root is the wrapper and
-    # each direct child is a row. Otherwise root itself is one flat row.
-    if list(children[0]):
-        return [{c.tag: c.text for c in row} for row in children]
-    return [{c.tag: c.text for c in root}]
+    # If any direct child of root is a leaf, treat root as a single flat
+    # row. Wrapper shapes (activeList, failureReasons, authStatusOutputList,
+    # etc.) have only container children with descendants; row shapes
+    # (sessionParameters from /Session/MACAddress/<mac>, Version) have at
+    # least one leaf child. The earlier "first child has children" check
+    # misclassified <sessionParameters> when its first child happened to
+    # be a nested radius_attributes block.
+    if any(not list(child) for child in children):
+        return [{c.tag: c.text for c in root if not list(c)}]
+    return [{c.tag: c.text for c in row} for row in children]
 
 
 def _parse_mnt_xml_root_leaves(content: str) -> dict[str, Any]:
@@ -138,8 +143,11 @@ def ise_mnt_version(content: Any) -> dict[str, Any]:
 
 
 def ise_mnt_active_count(content: Any) -> dict[str, Any]:
-    """Parse /Session/ActiveCount XML into {count: int}. The response is
-    typically <numberOfActiveSession>N</numberOfActiveSession>."""
+    """Parse /Session/ActiveCount XML into {count: int}. The actual
+    response shape is <sessionCount><count>N</count></sessionCount>
+    (verified via Cisco DevNet Session-Management ref); root.text is
+    just whitespace between elements, so we read root.find('count').text.
+    """
     from xml.etree import ElementTree as ET
 
     if not isinstance(content, str) or not content.strip():
@@ -148,7 +156,8 @@ def ise_mnt_active_count(content: Any) -> dict[str, Any]:
         root = ET.fromstring(content)
     except ET.ParseError:
         return {"count": 0}
-    raw = (root.text or "").strip()
+    count_elem = root.find("count")
+    raw = (count_elem.text or "").strip() if count_elem is not None else ""
     try:
         return {"count": int(raw)}
     except ValueError:

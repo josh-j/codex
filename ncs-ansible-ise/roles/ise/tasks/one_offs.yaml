@@ -38,17 +38,19 @@
 # nad_port_history pull the full population for their joins; the others
 # filter server-side so we don't paginate the entire endpoint inventory.
 - name: "ISE One-Off | Build endpoint URL"
+  # ERS endpoint resource has no searchable `name` field — only `mac` is
+  # the identity. We only emit a server-side filter when the lookup
+  # value matches a MAC pattern; non-MAC inputs (hostname, IP,
+  # username) fall back to a full-scan and let downstream Jinja narrow
+  # via session / auth-status rows instead.
   ansible.builtin.set_fact:
     _ise_endpoint_filter_clauses: >-
       {{
-        []
-        if _ise_one_off_operation in ['endpoint_risk_report', 'nad_port_history']
-        or (_ise_lookup | length) == 0
-        else (
-          ['mac.EQ.' ~ (_ise_lookup | upper)]
-          if _ise_lookup is match('^[0-9A-Fa-f]{2}([:-]?[0-9A-Fa-f]{2}){5}$')
-          else ['mac.CONTAINS.' ~ _ise_lookup, 'name.CONTAINS.' ~ _ise_lookup]
-        )
+        ['mac.EQ.' ~ (_ise_lookup | upper)]
+        if _ise_one_off_operation not in ['endpoint_risk_report', 'nad_port_history']
+           and (_ise_lookup | length) > 0
+           and _ise_lookup is match('^[0-9A-Fa-f]{2}([:-]?[0-9A-Fa-f]{2}){5}$')
+        else []
       }}
   changed_when: false
 
@@ -57,9 +59,7 @@
     _ise_endpoint_url: >-
       https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/endpoint{%
         if _ise_endpoint_filter_clauses | length > 0
-      %}?{{ (_ise_endpoint_filter_clauses | map('regex_replace', '^', 'filter=') | list
-            + (['filterType=OR'] if _ise_endpoint_filter_clauses | length > 1 else []))
-          | join('&') }}{% endif %}
+      %}?{{ _ise_endpoint_filter_clauses | map('regex_replace', '^', 'filter=') | join('&') }}{% endif %}
   changed_when: false
 
 - name: "ISE One-Off | Get endpoints"
@@ -154,7 +154,7 @@
 - name: "ISE One-Off | Get recent authentication status"
   ansible.builtin.uri:
     url: >-
-      https://{{ ise_mnt_hostname }}/admin/API/mnt/AuthStatus/MACAddress/0/{{ _ise_one_off_seconds }}/{{ _ise_one_off_records }}/All/FALSE
+      https://{{ ise_mnt_hostname }}/admin/API/mnt/AuthStatus/MACAddress/0/{{ _ise_one_off_seconds }}/{{ _ise_one_off_records }}/All
     method: GET
     url_username: "{{ ise_username }}"
     url_password: "{{ ise_password }}"
