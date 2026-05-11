@@ -46,10 +46,9 @@
   ansible.builtin.set_fact:
     _ise_endpoint_filter_clauses: >-
       {{
-        ['mac.EQ.' ~ (_ise_lookup | upper)]
+        ['mac.EQ.' ~ (_ise_lookup | internal.ise.ise_normalize_mac)]
         if _ise_one_off_operation not in ['endpoint_risk_report', 'nad_port_history']
-           and (_ise_lookup | length) > 0
-           and _ise_lookup is match('^[0-9A-Fa-f]{2}([:-]?[0-9A-Fa-f]{2}){5}$')
+           and (_ise_lookup | internal.ise.ise_normalize_mac | length) > 0
         else []
       }}
   changed_when: false
@@ -80,25 +79,6 @@
   changed_when: false
   failed_when: false
   when: _ise_one_off_operation in ['endpoint_lookup', 'endpoint_risk_report', 'endpoint_timeline', 'nad_port_history']
-
-# Anchor still defined here so the other PAN cisco.ise calls below
-# (network_device_info, *_info policy modules) keep their existing wiring
-# until we confirm whether they hit the same SDK routing issue.
-- name: "ISE One-Off | Anchor cisco.ise PAN args"
-  ansible.builtin.set_fact:
-    _ise_pan_args_anchor:
-      &ise_pan_args
-      ise_hostname: "{{ ise_pan_hostname }}"
-      ise_username: "{{ ise_username }}"
-      ise_password: "{{ ise_password }}"
-      ise_verify: "{{ ise_verify }}"
-      ise_version: "{{ ise_version }}"
-      ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
-      ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
-      ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
-      ise_debug: "{{ ise_debug }}"
-      ise_single_request_timeout: "{{ ise_single_request_timeout }}"
-  changed_when: false
 
 - name: "ISE One-Off | Get network devices"
   ansible.builtin.uri:
@@ -186,7 +166,7 @@
 
 - name: "ISE One-Off | Get session by MAC"
   ansible.builtin.uri:
-    url: "https://{{ ise_mnt_hostname }}/admin/API/mnt/Session/MACAddress/{{ _ise_lookup }}"
+    url: "https://{{ ise_mnt_hostname }}/admin/API/mnt/Session/MACAddress/{{ _ise_lookup | internal.ise.ise_normalize_mac }}"
     method: GET
     url_username: "{{ ise_username }}"
     url_password: "{{ ise_password }}"

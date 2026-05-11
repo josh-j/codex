@@ -293,6 +293,68 @@
   failed_when: false
   when: ise_collect_node_health | bool
 
+- name: "ISE | Get telemetry information"
+  # Path varies across ISE versions; ?cmd=getRegistrationInfo is the
+  # consistent admin endpoint that exposes Smart Licensing telemetry.
+  # failed_when: false keeps the play green if the path is rejected.
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}/api/v1/telemetry/info"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  become: false
+  register: _ise_telemetry
+  changed_when: false
+  failed_when: false
+
+- name: "ISE | Get endpoint device types"
+  # OpenAPI device-type list; if 404 on this ISE version, the schema's
+  # first_of falls back to an empty list.
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}/api/v1/endpoint/deviceType"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  become: false
+  register: _ise_endpoint_device_types
+  changed_when: false
+  failed_when: false
+  when: ise_collect_endpoints | bool
+
+- name: "ISE | Get endpoint configuration (random MAC)"
+  # Surfaces the enableRCM flag the schema reads for
+  # endpoint_random_mac_detection_enabled.
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}/api/v1/profile/endpoint/randomMacDetection"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  become: false
+  register: _ise_endpoint_configuration
+  changed_when: false
+  failed_when: false
+
 - name: "ISE | Get node replication status"
   # OpenAPI replacement for the SDK's mnt_node_replication_status_info.
   # If a given ISE version doesn't expose this path, failed_when=false
@@ -340,9 +402,9 @@
   changed_when: false
   failed_when: false
 
-- name: "ISE | Get network devices"
+- name: "ISE | Get network devices (page 1)"
   ansible.builtin.uri:
-    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/networkdevice?size=100"
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/networkdevice?size=100&page=1"
     method: GET
     url_username: "{{ ise_username }}"
     url_password: "{{ ise_password }}"
@@ -357,6 +419,41 @@
   register: _ise_network_devices
   changed_when: false
   failed_when: false
+  when: ise_collect_network_devices | bool
+
+- name: "ISE | Get network devices (pages 2..N)"
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/networkdevice?size=100&page={{ item }}"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  become: false
+  register: _ise_network_devices_pages
+  changed_when: false
+  failed_when: false
+  loop: >-
+    {{ range(2, [((_ise_network_devices.json.SearchResult.total | default(0) | int) + 99) // 100, 100] | min + 1) | list }}
+  loop_control:
+    label: "page {{ item }}"
+  when:
+    - ise_collect_network_devices | bool
+    - (_ise_network_devices.json.SearchResult.total | default(0) | int) > 100
+
+- name: "ISE | Combine network device pages"
+  ansible.builtin.set_fact:
+    _ise_network_devices_all: >-
+      {{ (_ise_network_devices.json.SearchResult.resources | default([]))
+         + ((_ise_network_devices_pages.results | default([]))
+            | map(attribute='json.SearchResult.resources')
+            | select | list | flatten) }}
+  changed_when: false
   when: ise_collect_network_devices | bool
 
 - name: "ISE | Get identity groups"
@@ -395,9 +492,9 @@
   changed_when: false
   failed_when: false
 
-- name: "ISE | Get endpoints"
+- name: "ISE | Get endpoints (page 1)"
   ansible.builtin.uri:
-    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/endpoint?size=100"
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/endpoint?size=100&page=1"
     method: GET
     url_username: "{{ ise_username }}"
     url_password: "{{ ise_password }}"
@@ -412,6 +509,42 @@
   register: _ise_endpoints
   changed_when: false
   failed_when: false
+  when: ise_collect_endpoints | bool
+
+# Cap pagination at 200 pages (20k endpoints) to keep run time bounded.
+- name: "ISE | Get endpoints (pages 2..N)"
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/endpoint?size=100&page={{ item }}"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  become: false
+  register: _ise_endpoints_pages
+  changed_when: false
+  failed_when: false
+  loop: >-
+    {{ range(2, [((_ise_endpoints.json.SearchResult.total | default(0) | int) + 99) // 100, 200] | min + 1) | list }}
+  loop_control:
+    label: "page {{ item }}"
+  when:
+    - ise_collect_endpoints | bool
+    - (_ise_endpoints.json.SearchResult.total | default(0) | int) > 100
+
+- name: "ISE | Combine endpoint pages"
+  ansible.builtin.set_fact:
+    _ise_endpoints_all: >-
+      {{ (_ise_endpoints.json.SearchResult.resources | default([]))
+         + ((_ise_endpoints_pages.results | default([]))
+            | map(attribute='json.SearchResult.resources')
+            | select | list | flatten) }}
+  changed_when: false
   when: ise_collect_endpoints | bool
 
 - name: "ISE | Get guest users"
@@ -756,7 +889,7 @@
         failed: "{{ _ise_network_devices.failed | default(false) | bool }}"
         skipped: "{{ _ise_network_devices.skipped | default(false) | bool }}"
         msg: "{{ _ise_network_devices.msg | default('') }}"
-        ise_response: "{{ _ise_network_devices.json.SearchResult.resources | default([]) }}"
+        ise_response: "{{ _ise_network_devices_all | default(_ise_network_devices.json.SearchResult.resources | default([])) }}"
         total: "{{ _ise_network_devices.json.SearchResult.total | default(0) | int }}"
       identity_groups:
         failed: "{{ _ise_identity_groups.failed | default(false) | bool }}"
@@ -772,7 +905,7 @@
         failed: "{{ _ise_endpoints.failed | default(false) | bool }}"
         skipped: "{{ _ise_endpoints.skipped | default(false) | bool }}"
         msg: "{{ _ise_endpoints.msg | default('') }}"
-        ise_response: "{{ _ise_endpoints.json.SearchResult.resources | default([]) }}"
+        ise_response: "{{ _ise_endpoints_all | default(_ise_endpoints.json.SearchResult.resources | default([])) }}"
         total: "{{ _ise_endpoints.json.SearchResult.total | default(0) | int }}"
       guest_users:
         failed: "{{ _ise_guest_users.failed | default(false) | bool }}"
@@ -833,6 +966,19 @@
         skipped: "{{ _ise_license.skipped | default(false) | bool }}"
         msg: "{{ _ise_license.msg | default('') }}"
         ise_response: "{{ _ise_license.json | default([]) }}"
+      telemetry:
+        failed: "{{ _ise_telemetry.failed | default(false) | bool }}"
+        msg: "{{ _ise_telemetry.msg | default('') }}"
+        ise_response: "{{ _ise_telemetry.json.response | default([]) }}"
+      endpoint_device_types:
+        failed: "{{ _ise_endpoint_device_types.failed | default(false) | bool }}"
+        skipped: "{{ _ise_endpoint_device_types.skipped | default(false) | bool }}"
+        msg: "{{ _ise_endpoint_device_types.msg | default('') }}"
+        ise_response: "{{ _ise_endpoint_device_types.json.response | default([]) }}"
+      endpoint_configuration:
+        failed: "{{ _ise_endpoint_configuration.failed | default(false) | bool }}"
+        msg: "{{ _ise_endpoint_configuration.msg | default('') }}"
+        ise_response: "{{ _ise_endpoint_configuration.json.response | default({}) }}"
       # Schema reads node_replication_status.results — same key the old
       # cisco.ise loop output used, so the existing normalize spec works.
       node_replication_status:

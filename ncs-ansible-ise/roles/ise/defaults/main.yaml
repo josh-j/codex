@@ -15,15 +15,9 @@ ise_mnt_hostname: "{{ ise_hostname }}"
 ise_username: admin
 ise_password: ""
 ise_verify: false
-ise_version: "3.5.0"
-ise_wait_on_rate_limit: true
-ise_uses_api_gateway: false
-ise_uses_csrf_token: false
-# ERS port used by direct uri calls that bypass the cisco.ise SDK
-# (endpoints_info in particular always routes through OpenAPI on 443
-# regardless of ise_uses_api_gateway, so we hit ERS:9060 directly).
+# ERS port for the direct uri calls. ISE's default ERS listener is 9060;
+# override if a deployment terminates ERS elsewhere.
 ise_ers_port: 9060
-ise_debug: false
 ise_single_request_timeout: 60
 
 # Skip telemetry emission (useful for ad-hoc runs).

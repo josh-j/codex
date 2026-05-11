@@ -34,8 +34,8 @@
   ansible.builtin.set_fact:
     _ise_coa_endpoint_filter_clauses: >-
       {{
-        ['mac.EQ.' ~ (_ise_coa_lookup | upper)]
-        if _ise_coa_lookup is match('^[0-9A-Fa-f]{2}([:-]?[0-9A-Fa-f]{2}){5}$')
+        ['mac.EQ.' ~ (_ise_coa_lookup | internal.ise.ise_normalize_mac)]
+        if (_ise_coa_lookup | internal.ise.ise_normalize_mac | length) > 0
         else []
       }}
   changed_when: false
@@ -65,22 +65,6 @@
   register: _ise_coa_endpoints_raw
   changed_when: false
   failed_when: false
-
-- name: "ISE CoA | Anchor cisco.ise PAN args"
-  ansible.builtin.set_fact:
-    _ise_pan_args_anchor:
-      &ise_pan_args
-      ise_hostname: "{{ ise_pan_hostname }}"
-      ise_username: "{{ ise_username }}"
-      ise_password: "{{ ise_password }}"
-      ise_verify: "{{ ise_verify }}"
-      ise_version: "{{ ise_version }}"
-      ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
-      ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
-      ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
-      ise_debug: "{{ ise_debug }}"
-      ise_single_request_timeout: "{{ ise_single_request_timeout }}"
-  changed_when: false
 
 - name: "ISE CoA | Get active sessions"
   ansible.builtin.uri:
@@ -145,7 +129,7 @@
 - name: "ISE CoA | Resolve API path values"
   ansible.builtin.set_fact:
     _ise_coa_server: "{{ _ise_coa_server_override | default(_ise_coa_target.server | default(''), true) }}"
-    _ise_coa_mac: "{{ _ise_coa_target.mac | upper }}"
+    _ise_coa_mac: "{{ _ise_coa_target.mac | internal.ise.ise_normalize_mac }}"
     _ise_coa_nad_ip: "{{ _ise_coa_nad_ip_override | default(_ise_coa_target.nad_ip | default(''), true) }}"
     _ise_coa_destination_ip: "{{ _ise_coa_destination_ip_override | default(_ise_coa_target.destination_ip_address | default(''), true) }}"
   changed_when: false

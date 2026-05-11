@@ -11,6 +11,23 @@ from typing import Any
 
 
 MAC_RANDOM_RE = re.compile(r"^[0-9a-f][26ae][:-]")
+_MAC_CHARS_RE = re.compile(r"[^0-9A-Fa-f]")
+
+
+def ise_normalize_mac(value: Any) -> str:
+    """Return a MAC in ISE's canonical form (uppercase, colon-separated).
+
+    Accepts inputs with dashes, dots, no separators, or already-canonical
+    form. Returns empty string for anything that doesn't yield exactly
+    12 hex digits — callers can then short-circuit instead of building
+    a malformed URL.
+    """
+    if value in (None, ""):
+        return ""
+    hex_only = _MAC_CHARS_RE.sub("", str(value)).upper()
+    if len(hex_only) != 12:
+        return ""
+    return ":".join(hex_only[i : i + 2] for i in range(0, 12, 2))
 
 
 def _as_list(value: Any) -> list[Any]:
@@ -893,6 +910,7 @@ class FilterModule:
             "ise_network_device_rows": ise_network_device_rows,
             "ise_auth_rows": ise_auth_rows,
             "ise_coa_candidates": ise_coa_candidates,
+            "ise_normalize_mac": ise_normalize_mac,
             "ise_mnt_version": ise_mnt_version,
             "ise_mnt_active_count": ise_mnt_active_count,
             "ise_mnt_active_sessions": ise_mnt_active_sessions,
