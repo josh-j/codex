@@ -1,0 +1,7 @@
+---
+# Cisco ISE per-node credentials. ise_hostname is per-host — set it
+# alongside ansible_host under each entry in inventory/production/ise_servers.yaml.
+ise_username: "{{ vault_ise_username }}"
+ise_password: "{{ vault_ise_password }}"
+ise_verify: false
+ise_version: "3.2"
