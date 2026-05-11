@@ -14,6 +14,65 @@ MAC_RANDOM_RE = re.compile(r"^[0-9a-f][26ae][:-]")
 _MAC_CHARS_RE = re.compile(r"[^0-9A-Fa-f]")
 
 
+def ise_nad_protocol_status(
+    loop_results: Any,
+    query: str = "",
+    only_missing: bool = False,
+) -> list[dict[str, Any]]:
+    """Extract RADIUS/TACACS configuration status from a loop of
+    ``/ers/config/networkdevice/<id>`` detail fetches.
+
+    Each Ansible loop result wraps the response as ``.json.NetworkDevice``.
+    A device with no ``authenticationSettings`` key is missing RADIUS; a
+    device with no ``tacacsSettings`` is missing TACACS. Optional ``query``
+    narrows the list to NADs whose name, IP, or description match a
+    substring. ``only_missing=True`` filters out fully-configured NADs.
+    """
+    rows: list[dict[str, Any]] = []
+    needle = query.strip().lower() if isinstance(query, str) else ""
+    for result in loop_results or []:
+        if not isinstance(result, dict):
+            continue
+        nd = ((result.get("json") or {}).get("NetworkDevice")) or {}
+        if not nd:
+            continue
+        has_radius = "authenticationSettings" in nd
+        has_tacacs = "tacacsSettings" in nd
+        missing = []
+        if not has_radius:
+            missing.append("RADIUS")
+        if not has_tacacs:
+            missing.append("TACACS")
+        if only_missing and not missing:
+            continue
+
+        ip_list = nd.get("NetworkDeviceIPList") or []
+        ip_address = ""
+        if isinstance(ip_list, list) and ip_list:
+            first = ip_list[0]
+            if isinstance(first, dict):
+                ip_address = _first(first, ["ipaddress", "ipAddress", "ip"], "")
+
+        row = {
+            "name": _first(nd, ["name"], ""),
+            "ip_address": ip_address,
+            "description": _first(nd, ["description"], ""),
+            "has_radius": "yes" if has_radius else "no",
+            "has_tacacs": "yes" if has_tacacs else "no",
+            "missing_protocols": ", ".join(missing) if missing else "",
+            "profile_name": _first(nd, ["profileName"], ""),
+            "model_name": _first(nd, ["modelName"], ""),
+        }
+        if needle:
+            haystack = (
+                f"{row['name']} {row['ip_address']} {row['description']}".lower()
+            )
+            if needle not in haystack:
+                continue
+        rows.append(row)
+    return rows
+
+
 def ise_normalize_mac(value: Any) -> str:
     """Return a MAC in ISE's canonical form (uppercase, colon-separated).
 
@@ -910,6 +969,7 @@ class FilterModule:
             "ise_network_device_rows": ise_network_device_rows,
             "ise_auth_rows": ise_auth_rows,
             "ise_coa_candidates": ise_coa_candidates,
+            "ise_nad_protocol_status": ise_nad_protocol_status,
             "ise_normalize_mac": ise_normalize_mac,
             "ise_mnt_version": ise_mnt_version,
             "ise_mnt_active_count": ise_mnt_active_count,

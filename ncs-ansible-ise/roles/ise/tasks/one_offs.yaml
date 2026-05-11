@@ -97,7 +97,34 @@
   register: _ise_one_off_network_devices_raw
   changed_when: false
   failed_when: false
-  when: _ise_one_off_operation in ['switch_lookup', 'port_endpoint_report', 'nad_troubleshooting', 'nad_port_history', 'nad_endpoint_inventory']
+  when: _ise_one_off_operation in ['switch_lookup', 'port_endpoint_report', 'nad_troubleshooting', 'nad_port_history', 'nad_endpoint_inventory', 'nad_missing_protocols']
+
+- name: "ISE One-Off | Get NAD details for protocol audit"
+  # ERS summary list only returns {id, name, link} per device — to see
+  # whether each NAD has authenticationSettings (RADIUS) and/or
+  # tacacsSettings configured, we fetch detail for each device id.
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/networkdevice/{{ item }}"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  become: false
+  register: _ise_one_off_nad_details
+  changed_when: false
+  failed_when: false
+  loop: >-
+    {{ (_ise_one_off_network_devices_raw.json.SearchResult.resources | default([]))
+       | map(attribute='id') | list }}
+  loop_control:
+    label: "{{ item }}"
+  when: _ise_one_off_operation == 'nad_missing_protocols'
 
 # MnT XML endpoints — the cisco.ise SDK's mnt_*_info modules call methods
 # that don't exist on the installed SDK version. Operator's exporter
@@ -506,6 +533,24 @@
       recent_endpoint_auths: "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_limit_rows(250) }}"
   changed_when: false
   when: _ise_one_off_operation == 'nad_endpoint_inventory'
+
+- name: "ISE One-Off | Build NAD protocol audit report"
+  ansible.builtin.set_fact:
+    _ise_one_off_report:
+      title: "NADs Missing RADIUS/TACACS"
+      nad_query: "{{ _ise_nad_query }}"
+      collected_at: "{{ _ise_one_off_collected_at }}"
+      ise_hostname: "{{ ise_hostname }}"
+      nads_missing_protocols: >-
+        {{ _ise_one_off_nad_details.results | default([])
+           | internal.ise.ise_nad_protocol_status(_ise_nad_query, only_missing=true)
+           | internal.ise.ise_limit_rows(500) }}
+      all_nads_status: >-
+        {{ _ise_one_off_nad_details.results | default([])
+           | internal.ise.ise_nad_protocol_status(_ise_nad_query)
+           | internal.ise.ise_limit_rows(500) }}
+  changed_when: false
+  when: _ise_one_off_operation == 'nad_missing_protocols'
 
 - name: "ISE One-Off | Build NAD port history report"
   ansible.builtin.set_fact:

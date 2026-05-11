@@ -110,6 +110,12 @@
 #   ise_seconds: "text = 86400 | Lookback Seconds | Auth-history lookback window"
 #   ise_records: "text = 500 | Max Records | Maximum recent authentication rows requested from MnT"
 # ---
+# label: NADs Missing RADIUS/TACACS
+# operation: nad_missing_protocols
+# is_read_only: true
+# options:
+#   ise_nad_query: "text | Optional NAD filter | Narrow the audit to NADs whose name/IP/description matches this substring (leave blank for all)"
+# ---
 # label: Policy Object Detail
 # operation: policy_object_detail
 # is_read_only: true
