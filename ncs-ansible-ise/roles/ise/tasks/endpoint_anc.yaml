@@ -97,15 +97,37 @@
   failed_when: false
 
 - name: "ISE ANC | Get ANC policies"
-  cisco.ise.anc_policy_info:
-    <<: *ise_pan_args
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/ancpolicy?size=100"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  become: false
   register: _ise_anc_policies_raw
   changed_when: false
   failed_when: false
 
 - name: "ISE ANC | Get current ANC endpoints"
-  cisco.ise.anc_endpoint_info:
-    <<: *ise_pan_args
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/ancendpoint?size=100"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  become: false
   register: _ise_anc_endpoint_assignments_raw
   changed_when: false
   failed_when: false

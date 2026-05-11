@@ -765,7 +765,13 @@
         failed: "{{ _ise_system_certificates.failed | default(false) | bool }}"
         skipped: "{{ _ise_system_certificates.skipped | default(false) | bool }}"
         msg: "{{ _ise_system_certificates.msg | default('') }}"
-        results: "{{ _ise_system_certificates.results | default([]) }}"
+        # Flatten the per-node OpenAPI loop into a single list. The schema
+        # reads system_certificates.ise_response[] (lines 218-219 of
+        # ise.yaml); a {results: [...]} shape wouldn't match either
+        # first_of branch.
+        ise_response: >-
+          {{ (_ise_system_certificates.results | default([]))
+             | map(attribute='json.response') | select | list | flatten }}
       trusted_certificates:
         failed: "{{ _ise_trusted_certificates.failed | default(false) | bool }}"
         skipped: "{{ _ise_trusted_certificates.skipped | default(false) | bool }}"

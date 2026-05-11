@@ -101,8 +101,19 @@
   changed_when: false
 
 - name: "ISE One-Off | Get network devices"
-  cisco.ise.network_device_info:
-    <<: *ise_pan_args
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/networkdevice?size=100"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  become: false
   register: _ise_one_off_network_devices_raw
   changed_when: false
   failed_when: false
@@ -233,32 +244,76 @@
   when: _ise_one_off_operation in ['failed_auth_summary', 'nad_troubleshooting']
 
 - name: "ISE One-Off | Get authorization profiles"
-  cisco.ise.authorization_profile_info:
-    <<: *ise_pan_args
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/authorizationprofile?size=100"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  become: false
   register: _ise_one_off_authorization_profiles_raw
   changed_when: false
   failed_when: false
   when: _ise_one_off_operation in ['policy_hit_explorer', 'policy_object_detail']
 
 - name: "ISE One-Off | Get downloadable ACLs"
-  cisco.ise.downloadable_acl_info:
-    <<: *ise_pan_args
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/downloadableacl?size=100"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  become: false
   register: _ise_one_off_downloadable_acls_raw
   changed_when: false
   failed_when: false
   when: _ise_one_off_operation in ['policy_hit_explorer', 'policy_object_detail']
 
 - name: "ISE One-Off | Get allowed protocols"
-  cisco.ise.allowed_protocols_info:
-    <<: *ise_pan_args
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/allowedprotocols?size=100"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  become: false
   register: _ise_one_off_allowed_protocols_raw
   changed_when: false
   failed_when: false
   when: _ise_one_off_operation in ['policy_hit_explorer', 'policy_object_detail']
 
 - name: "ISE One-Off | Get filter policies"
-  cisco.ise.filter_policy_info:
-    <<: *ise_pan_args
+  ansible.builtin.uri:
+    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/filterpolicy?size=100"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/json
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  become: false
   register: _ise_one_off_filter_policies_raw
   changed_when: false
   failed_when: false
