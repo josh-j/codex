@@ -127,28 +127,25 @@ def _resolved_or_empty(val: Any) -> str:
 
 
 def _find_repo_root(start_dir: str, max_up: int = 8) -> str:
-    """Walk up from *start_dir* looking for a repo root marker.
+    """Walk up from *start_dir* looking for an orchestrator-root marker.
 
     Checks both the real path (symlinks resolved) and the logical path
     (symlinks preserved) to handle setups where ``internal/`` is
     symlinked into ``collections/ansible_collections/``.
 
-    The ``ncs_configs/`` marker must contain at least one ``.yaml``
-    file — installed collections package an empty ``ncs_configs/``
-    (a ``.gitkeep`` placeholder) that would otherwise short-circuit
-    the walk and miss the orchestrator's schema-bearing dir.
+    The ``ncs_configs/`` marker requires an orchestrator-specific file
+    (``config.yaml`` with extra_config_dirs, or ``inventory_root.yaml``).
+    Each collection ships its own ``ncs_configs/`` with platform schemas
+    (``ise.yaml``, ``linux.yaml``, etc.); those alone are not the
+    orchestrator root and must not short-circuit the walk.
     """
 
-    def _ncs_configs_has_schemas(d: str) -> bool:
+    def _ncs_configs_is_orchestrator(d: str) -> bool:
         if not os.path.isdir(d):
             return False
-        try:
-            return any(
-                f.endswith((".yaml", ".yml")) and not f.startswith(".")
-                for f in os.listdir(d)
-            )
-        except OSError:
-            return False
+        return os.path.isfile(os.path.join(d, "config.yaml")) or os.path.isfile(
+            os.path.join(d, "inventory_root.yaml")
+        )
 
     candidates = [os.path.realpath(start_dir)]
     logical = os.path.abspath(start_dir)
@@ -159,7 +156,7 @@ def _find_repo_root(start_dir: str, max_up: int = 8) -> str:
         for _ in range(max_up + 1):
             if os.path.isdir(os.path.join(cur, "collections", "ansible_collections")):
                 return cur
-            if _ncs_configs_has_schemas(os.path.join(cur, "ncs_configs")):
+            if _ncs_configs_is_orchestrator(os.path.join(cur, "ncs_configs")):
                 return cur
             if os.path.isdir(os.path.join(cur, "files", "ncs-reporter_configs")):
                 return cur
