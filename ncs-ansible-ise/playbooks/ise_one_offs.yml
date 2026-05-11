@@ -102,6 +102,14 @@
 #   ise_seconds: "text = 604800 | Lookback Seconds | Authentication lookback window"
 #   ise_records: "text = 1000 | Max Records | Maximum recent authentication rows requested from MnT"
 # ---
+# label: Endpoints on NAD
+# operation: nad_endpoint_inventory
+# is_read_only: true
+# options:
+#   ise_nad_query: "text | NAD Name or IP | Switch/NAD to list endpoints for"
+#   ise_seconds: "text = 86400 | Lookback Seconds | Auth-history lookback window"
+#   ise_records: "text = 500 | Max Records | Maximum recent authentication rows requested from MnT"
+# ---
 # label: Policy Object Detail
 # operation: policy_object_detail
 # is_read_only: true

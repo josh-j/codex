@@ -117,7 +117,7 @@
   register: _ise_one_off_network_devices_raw
   changed_when: false
   failed_when: false
-  when: _ise_one_off_operation in ['switch_lookup', 'port_endpoint_report', 'nad_troubleshooting', 'nad_port_history']
+  when: _ise_one_off_operation in ['switch_lookup', 'port_endpoint_report', 'nad_troubleshooting', 'nad_port_history', 'nad_endpoint_inventory']
 
 # MnT XML endpoints — the cisco.ise SDK's mnt_*_info modules call methods
 # that don't exist on the installed SDK version. Operator's exporter
@@ -147,7 +147,8 @@
       'port_endpoint_report',
       'endpoint_timeline',
       'nad_troubleshooting',
-      'nad_port_history'
+      'nad_port_history',
+      'nad_endpoint_inventory'
     ]
 
 - name: "ISE One-Off | Get recent authentication status"
@@ -179,6 +180,7 @@
       'policy_hit_explorer',
       'nad_troubleshooting',
       'nad_port_history',
+      'nad_endpoint_inventory',
       'policy_object_detail'
     ]
 
@@ -511,6 +513,19 @@
       coa_anc_candidates: "{{ _ise_one_off_session_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_limit_rows(50) }}"
   changed_when: false
   when: _ise_one_off_operation == 'nad_troubleshooting'
+
+- name: "ISE One-Off | Build NAD endpoint inventory report"
+  ansible.builtin.set_fact:
+    _ise_one_off_report:
+      title: "Endpoints on NAD"
+      nad_query: "{{ _ise_nad_query }}"
+      collected_at: "{{ _ise_one_off_collected_at }}"
+      ise_hostname: "{{ ise_hostname }}"
+      matching_network_devices: "{{ _ise_one_off_network_device_rows | internal.ise.ise_search_rows(_ise_nad_query) | internal.ise.ise_limit_rows(25) }}"
+      active_endpoints: "{{ _ise_one_off_session_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_limit_rows(250) }}"
+      recent_endpoint_auths: "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_limit_rows(250) }}"
+  changed_when: false
+  when: _ise_one_off_operation == 'nad_endpoint_inventory'
 
 - name: "ISE One-Off | Build NAD port history report"
   ansible.builtin.set_fact:

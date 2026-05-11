@@ -26,6 +26,7 @@
       - endpoint_anc
       - nad_troubleshooting
       - nad_port_history
+      - nad_endpoint_inventory
       - policy_object_detail
     _dispatch_map:
       _default_: collect
@@ -41,4 +42,5 @@
       endpoint_anc: endpoint_anc
       nad_troubleshooting: one_offs
       nad_port_history: one_offs
+      nad_endpoint_inventory: one_offs
       policy_object_detail: one_offs
