@@ -84,6 +84,32 @@ def _contains(row: dict[str, Any], query: str, fields: list[str] | None = None) 
     return needle in haystack
 
 
+def _parse_mnt_xml_rows(content: str) -> list[dict[str, Any]]:
+    """Parse an ISE MnT XML response into a list of row dicts.
+
+    Handles wrapper shapes like <activeList><activeSession>row</activeSession>...
+    where the wrapper's children are row elements whose children are leaf
+    fields. Falls back to treating root itself as a single row when there
+    is no wrapping level.
+    """
+    from xml.etree import ElementTree as ET
+
+    try:
+        root = ET.fromstring(content)
+    except ET.ParseError:
+        return []
+
+    children = list(root)
+    if not children:
+        return []
+
+    # If the first child has children of its own, root is the wrapper and
+    # each direct child is a row. Otherwise root itself is one flat row.
+    if list(children[0]):
+        return [{c.tag: c.text for c in row} for row in children]
+    return [{c.tag: c.text for c in root}]
+
+
 def ise_result_rows(value: Any) -> list[Any]:
     """Unwrap common cisco.ise module result shapes into a list of rows."""
     if value is None:
@@ -92,6 +118,14 @@ def ise_result_rows(value: Any) -> list[Any]:
         return value
     if not isinstance(value, dict):
         return [value]
+
+    # ansible.builtin.uri register with XML body (MnT endpoints): parse
+    # the .content string into rows before falling through to dict unwrap.
+    content = value.get("content")
+    if isinstance(content, str) and content.lstrip().startswith("<"):
+        rows = _parse_mnt_xml_rows(content)
+        if rows:
+            return rows
 
     for key in (
         "json",

@@ -81,17 +81,19 @@
   changed_when: false
 
 - name: "ISE CoA | Get active sessions"
-  cisco.ise.mnt_session_active_list_info: &ise_mnt_args
-    ise_hostname: "{{ ise_mnt_hostname }}"
-    ise_username: "{{ ise_username }}"
-    ise_password: "{{ ise_password }}"
-    ise_verify: "{{ ise_verify }}"
-    ise_version: "{{ ise_version }}"
-    ise_wait_on_rate_limit: "{{ ise_wait_on_rate_limit }}"
-    ise_uses_api_gateway: "{{ ise_uses_api_gateway }}"
-    ise_uses_csrf_token: "{{ ise_uses_csrf_token }}"
-    ise_debug: "{{ ise_debug }}"
-    ise_single_request_timeout: "{{ ise_single_request_timeout }}"
+  ansible.builtin.uri:
+    url: "https://{{ ise_mnt_hostname }}/admin/API/mnt/Session/ActiveList"
+    method: GET
+    url_username: "{{ ise_username }}"
+    url_password: "{{ ise_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ ise_verify }}"
+    headers:
+      Accept: application/xml
+    return_content: true
+    status_code: [200]
+    timeout: "{{ ise_single_request_timeout }}"
+  become: false
   register: _ise_coa_active_sessions_raw
   changed_when: false
   failed_when: false
