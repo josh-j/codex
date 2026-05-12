@@ -73,26 +73,15 @@
   failed_when: false
   when: _ise_one_off_operation in ['endpoint_lookup', 'endpoint_risk_report', 'endpoint_timeline', 'nad_port_history']
 
-- name: "ISE One-Off | Get network devices (page 1)"
-  ansible.builtin.uri:
-    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/networkdevice?size=100&page=1"
-    method: GET
-    headers:
-      Accept: application/json
-  become: false
-  register: _ise_one_off_network_devices_raw
-  changed_when: false
-  failed_when: false
-  when: _ise_one_off_operation in ['switch_lookup', 'port_endpoint_report', 'nad_troubleshooting', 'nad_port_history', 'nad_endpoint_inventory']
-
-# nad_missing_protocols needs the full NAD population *and* each device's
-# authenticationSettings/tacacsSettings, which only live on the per-NAD
-# detail body. The previous async/poll:0 + async_status fan-out had to
-# walk one harvest loop per NAD with a 2s retry tick, which dominated
-# wall-clock on large fleets. ise_network_devices_info collapses the
-# list + paginate + detail fan-out into one Ansible task using
-# concurrent.futures so we pay loop overhead exactly once.
-- name: "ISE One-Off | Audit NAD protocol coverage"
+# Unified NAD inventory step. Lookup ops (switch_lookup, nad_troubleshooting,
+# nad_port_history, nad_endpoint_inventory, port_endpoint_report) pass
+# _ise_nad_query as a server-side ERS name filter so they hit the full
+# fleet, not just page 1 of the unfiltered list — the previous page-1 GET
+# silently produced "0 match network devices" whenever the target NAD lived
+# on page 2+. nad_missing_protocols leaves name_filter empty to audit
+# everything. Both modes need authenticationSettings/tacacsSettings on the
+# detail body, so include_settings stays on for both.
+- name: "ISE One-Off | Inventory NADs"
   internal.ise.ise_network_devices_info:
     hostname: "{{ ise_pan_hostname }}"
     port: "{{ ise_ers_port }}"
@@ -101,10 +90,11 @@
     validate_certs: "{{ ise_verify }}"
     request_timeout: "{{ ise_single_request_timeout }}"
     max_workers: "{{ ise_nad_audit_workers | default(16) | int }}"
-  register: _ise_one_off_nad_audit
+    name_filter: "{{ '' if _ise_one_off_operation == 'nad_missing_protocols' else _ise_nad_query }}"
+  register: _ise_one_off_nad_inventory
   changed_when: false
   failed_when: false
-  when: _ise_one_off_operation == 'nad_missing_protocols'
+  when: _ise_one_off_operation in ['switch_lookup', 'port_endpoint_report', 'nad_troubleshooting', 'nad_port_history', 'nad_endpoint_inventory', 'nad_missing_protocols']
 
 # MnT XML endpoints — the cisco.ise SDK's mnt_*_info modules call methods
 # that don't exist on the installed SDK version. Operator's exporter
@@ -156,6 +146,29 @@
       'nad_endpoint_inventory',
       'policy_object_detail'
     ]
+
+# nad_endpoint_inventory needs full per-session detail (port, vlan, auth
+# protocol, authz profile, matched rule, ...) for the "Active Endpoints"
+# table — MnT Session/ActiveList only carries a condensed payload. The
+# only MnT endpoint that returns full detail is Session/MACAddress/<mac>,
+# one call per MAC. ise_session_details_info lists, narrows to the
+# matched NAD's IP(s), and fans the per-MAC GETs out across a
+# ThreadPoolExecutor.
+- name: "ISE One-Off | Fetch full session detail for matched NADs"
+  internal.ise.ise_session_details_info:
+    hostname: "{{ ise_mnt_hostname }}"
+    username: "{{ ise_username }}"
+    password: "{{ ise_password }}"
+    validate_certs: "{{ ise_verify }}"
+    request_timeout: "{{ ise_single_request_timeout }}"
+    max_workers: "{{ ise_session_detail_workers | default(16) | int }}"
+    nad_ip_filter: >-
+      {{ ((_ise_one_off_nad_inventory.rows | default([]))
+          | map(attribute='ip_address') | select | unique | list) }}
+  register: _ise_one_off_session_details
+  changed_when: false
+  failed_when: false
+  when: _ise_one_off_operation == 'nad_endpoint_inventory'
 
 - name: "ISE One-Off | Get session by MAC"
   ansible.builtin.uri:
@@ -251,13 +264,23 @@
       {{
         _ise_one_off_endpoints_raw | default({}) | internal.ise.ise_result_rows | internal.ise.ise_endpoint_rows
       }}
-    _ise_one_off_network_device_rows: >-
-      {{
-        _ise_one_off_network_devices_raw | default({}) | internal.ise.ise_result_rows | internal.ise.ise_network_device_rows
-      }}
+    # ise_network_devices_info already returns the row shape we want
+    # (name/id/ip_address/description/location/type/has_radius/has_tacacs/
+    # missing_protocols/profile_name/model_name); no extra normalization
+    # needed.
+    _ise_one_off_network_device_rows: "{{ _ise_one_off_nad_inventory.rows | default([]) }}"
+    # nad_endpoint_inventory consumes the full per-MAC session detail from
+    # ise_session_details_info; the other session-bearing ops keep using
+    # the condensed ActiveList payload.
     _ise_one_off_session_rows: >-
       {{
-        _ise_one_off_active_sessions_raw | default({}) | internal.ise.ise_result_rows | internal.ise.ise_auth_rows
+        (
+          (_ise_one_off_session_details.sessions | default([]))
+          if _ise_one_off_operation == 'nad_endpoint_inventory'
+          else (_ise_one_off_active_sessions_raw | default({}))
+        )
+        | internal.ise.ise_result_rows
+        | internal.ise.ise_auth_rows
       }}
     _ise_one_off_auth_rows: >-
       {{
@@ -332,11 +355,15 @@
       query: "{{ _ise_nad_query }}"
       collected_at: "{{ _ise_one_off_collected_at }}"
       ise_hostname: "{{ ise_hostname }}"
-      network_devices: "{{ _ise_one_off_network_device_rows | internal.ise.ise_search_rows(_ise_nad_query) | internal.ise.ise_limit_rows(25) }}"
+      network_devices: "{{ _ise_one_off_network_device_rows | internal.ise.ise_limit_rows(25) }}"
+      # MnT Session/ActiveList only carries nas_ip_address — no NAD name.
+      # ise_sessions_on_nads joins on NAD IP so a name-based query still
+      # finds active sessions. Recent auths from AuthStatus already carry
+      # network_device_name, so ise_nad_rows(query) is still correct there.
       active_or_recent_sessions: >-
         {{
           (
-            (_ise_one_off_session_rows | internal.ise.ise_nad_rows(_ise_nad_query))
+            (_ise_one_off_session_rows | internal.ise.ise_sessions_on_nads(_ise_one_off_network_device_rows))
             + (_ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query))
           ) | internal.ise.ise_limit_rows(75)
         }}
@@ -428,13 +455,13 @@
       nad_query: "{{ _ise_nad_query }}"
       collected_at: "{{ _ise_one_off_collected_at }}"
       ise_hostname: "{{ ise_hostname }}"
-      matching_network_devices: "{{ _ise_one_off_network_device_rows | internal.ise.ise_search_rows(_ise_nad_query) | internal.ise.ise_limit_rows(25) }}"
-      active_sessions: "{{ _ise_one_off_session_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_limit_rows(100) }}"
+      matching_network_devices: "{{ _ise_one_off_network_device_rows | internal.ise.ise_limit_rows(25) }}"
+      active_sessions: "{{ _ise_one_off_session_rows | internal.ise.ise_sessions_on_nads(_ise_one_off_network_device_rows) | internal.ise.ise_limit_rows(100) }}"
       recent_authentications: "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_limit_rows(150) }}"
       recent_failures: "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_failure_rows | internal.ise.ise_limit_rows(100) }}"
       top_failure_ports: "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_port_failure_summary }}"
       failure_reasons: "{{ _ise_one_off_failure_reason_rows | internal.ise.ise_limit_rows(50) }}"
-      coa_anc_candidates: "{{ _ise_one_off_session_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_limit_rows(50) }}"
+      coa_anc_candidates: "{{ _ise_one_off_session_rows | internal.ise.ise_sessions_on_nads(_ise_one_off_network_device_rows) | internal.ise.ise_limit_rows(50) }}"
   changed_when: false
   when: _ise_one_off_operation == 'nad_troubleshooting'
 
@@ -445,16 +472,23 @@
       nad_query: "{{ _ise_nad_query }}"
       collected_at: "{{ _ise_one_off_collected_at }}"
       ise_hostname: "{{ ise_hostname }}"
-      matching_network_devices: "{{ _ise_one_off_network_device_rows | internal.ise.ise_search_rows(_ise_nad_query) | internal.ise.ise_limit_rows(25) }}"
-      active_endpoints: "{{ _ise_one_off_session_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_limit_rows(250) }}"
+      matching_network_devices: "{{ _ise_one_off_network_device_rows | internal.ise.ise_limit_rows(25) }}"
+      # _ise_one_off_session_rows here is already the per-MAC detail fetched
+      # by ise_session_details_info and narrowed to the matched NAD's IP(s),
+      # so the columns (port, vlan, auth_protocol, authz profile, matched
+      # rule, ...) the ActiveList payload doesn't carry are now populated.
+      active_endpoints: "{{ _ise_one_off_session_rows | internal.ise.ise_limit_rows(250) }}"
       recent_endpoint_auths: "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_limit_rows(250) }}"
   changed_when: false
   when: _ise_one_off_operation == 'nad_endpoint_inventory'
 
 - name: "ISE One-Off | Shape NAD protocol audit rows"
   ansible.builtin.set_fact:
+    # nad_missing_protocols passes empty name_filter so the inventory step
+    # walks the full fleet. _ise_nad_query (optional) narrows on the client
+    # side here — usually blank for a full audit.
     _ise_one_off_nad_protocol_rows: >-
-      {{ (_ise_one_off_nad_audit.rows | default([]))
+      {{ (_ise_one_off_nad_inventory.rows | default([]))
          | internal.ise.ise_search_rows(_ise_nad_query) }}
   changed_when: false
   when: _ise_one_off_operation == 'nad_missing_protocols'

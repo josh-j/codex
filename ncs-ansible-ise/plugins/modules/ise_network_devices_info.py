@@ -18,6 +18,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 from urllib import error as urllib_error
 from urllib import request as urllib_request
+from urllib.parse import quote as urlquote
 
 from ansible.module_utils.basic import AnsibleModule
 
@@ -71,6 +72,21 @@ options:
     description: Hard cap on pages walked, in case ISE reports a runaway total.
     type: int
     default: 100
+  name_filter:
+    description:
+      - Narrow the list to NADs whose C(name) contains this substring (ERS
+        server-side C(filter=name.CONTAINS.<value>)). Leave blank for the
+        full fleet.
+    type: str
+    default: ""
+  include_settings:
+    description:
+      - When false, skip the per-NAD detail fan-out and return ERS summaries
+        only. The C(has_radius)/C(has_tacacs)/C(missing_protocols) columns
+        will be empty in that mode; callers that don't need those columns
+        avoid an N-request fan-out.
+    type: bool
+    default: true
 author:
   - NCS
 """
@@ -123,24 +139,29 @@ def _first_ip(nd: dict[str, Any]) -> str:
     return ""
 
 
-def _row(nd: dict[str, Any]) -> dict[str, Any]:
-    has_radius = "authenticationSettings" in nd
-    has_tacacs = "tacacsSettings" in nd
-    missing: list[str] = []
-    if not has_radius:
-        missing.append("RADIUS")
-    if not has_tacacs:
-        missing.append("TACACS")
-    return {
+def _row(nd: dict[str, Any], include_settings: bool = True) -> dict[str, Any]:
+    row: dict[str, Any] = {
         "name": _first(nd, ["name"], ""),
+        "id": _first(nd, ["id"], ""),
         "ip_address": _first_ip(nd),
         "description": _first(nd, ["description"], ""),
-        "has_radius": has_radius,
-        "has_tacacs": has_tacacs,
-        "missing_protocols": ", ".join(missing),
+        "location": _first(nd, ["location"], ""),
+        "type": _first(nd, ["type"], ""),
         "profile_name": _first(nd, ["profileName"], ""),
         "model_name": _first(nd, ["modelName"], ""),
     }
+    if include_settings:
+        has_radius = "authenticationSettings" in nd
+        has_tacacs = "tacacsSettings" in nd
+        missing: list[str] = []
+        if not has_radius:
+            missing.append("RADIUS")
+        if not has_tacacs:
+            missing.append("TACACS")
+        row["has_radius"] = has_radius
+        row["has_tacacs"] = has_tacacs
+        row["missing_protocols"] = ", ".join(missing)
+    return row
 
 
 class _Client:
@@ -182,16 +203,30 @@ class _Client:
             raise RuntimeError(f"invalid JSON from {url}: {exc}") from exc
 
 
-def _list_nads(client: _Client, page_size: int, max_pages: int) -> tuple[int, list[dict[str, Any]]]:
-    """Walk the ERS NAD list endpoint to completion. Returns (total, summaries)."""
-    page1 = client.get_json(f"/ers/config/networkdevice?size={page_size}&page=1")
+def _list_nads(
+    client: _Client,
+    page_size: int,
+    max_pages: int,
+    name_filter: str = "",
+) -> tuple[int, list[dict[str, Any]]]:
+    """Walk the ERS NAD list endpoint to completion. Returns (total, summaries).
+
+    When *name_filter* is non-empty, the ERS C(filter=name.CONTAINS.<value>)
+    parameter is appended so the server narrows the list before pagination.
+    Bypasses the page-1 cap that the playbook used to hit when a NAD lived
+    on page 2+.
+    """
+    base = f"/ers/config/networkdevice?size={page_size}"
+    if name_filter:
+        base += f"&filter=name.CONTAINS.{urlquote(name_filter, safe='')}"
+    page1 = client.get_json(f"{base}&page=1")
     sr = page1.get("SearchResult") or {}
     summaries: list[dict[str, Any]] = list(sr.get("resources") or [])
     total = int(sr.get("total") or len(summaries))
     pages = (total + page_size - 1) // page_size if total > 0 else 1
     pages = min(pages, max_pages)
     for page in range(2, pages + 1):
-        body = client.get_json(f"/ers/config/networkdevice?size={page_size}&page={page}")
+        body = client.get_json(f"{base}&page={page}")
         summaries.extend((body.get("SearchResult") or {}).get("resources") or [])
     return total, summaries
 
@@ -213,6 +248,8 @@ def run_module() -> None:
             "max_workers": {"type": "int", "default": 16},
             "page_size": {"type": "int", "default": 100},
             "max_pages": {"type": "int", "default": 100},
+            "name_filter": {"type": "str", "default": ""},
+            "include_settings": {"type": "bool", "default": True},
         },
         supports_check_mode=True,
     )
@@ -227,27 +264,39 @@ def run_module() -> None:
     )
 
     try:
-        total, summaries = _list_nads(client, int(p["page_size"]), int(p["max_pages"]))
+        total, summaries = _list_nads(
+            client,
+            int(p["page_size"]),
+            int(p["max_pages"]),
+            str(p["name_filter"] or ""),
+        )
     except Exception as exc:
         module.fail_json(msg=str(exc), changed=False, total=0, fetched=0, rows=[], errors=[])
 
-    ids: list[tuple[str, str]] = [
-        (str(s.get("id")), str(s.get("name") or ""))
-        for s in summaries
-        if isinstance(s, dict) and s.get("id")
-    ]
-
+    include_settings = bool(p["include_settings"])
     rows: list[dict[str, Any]] = []
     errors: list[dict[str, Any]] = []
-    workers = max(1, int(p["max_workers"]))
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = {pool.submit(_fetch_detail, client, nad_id): (nad_id, name) for nad_id, name in ids}
-        for fut in as_completed(futures):
-            nad_id, name = futures[fut]
-            try:
-                rows.append(_row(fut.result()))
-            except Exception as exc:
-                errors.append({"id": nad_id, "name": name, "error": str(exc)})
+
+    if not include_settings:
+        # Skip the N detail GETs — return summaries shaped to the row contract.
+        for s in summaries:
+            if isinstance(s, dict):
+                rows.append(_row(s, include_settings=False))
+    else:
+        ids: list[tuple[str, str]] = [
+            (str(s.get("id")), str(s.get("name") or ""))
+            for s in summaries
+            if isinstance(s, dict) and s.get("id")
+        ]
+        workers = max(1, int(p["max_workers"]))
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {pool.submit(_fetch_detail, client, nad_id): (nad_id, name) for nad_id, name in ids}
+            for fut in as_completed(futures):
+                nad_id, name = futures[fut]
+                try:
+                    rows.append(_row(fut.result(), include_settings=True))
+                except Exception as exc:
+                    errors.append({"id": nad_id, "name": name, "error": str(exc)})
 
     rows.sort(key=lambda r: (r.get("name") or "").lower())
 

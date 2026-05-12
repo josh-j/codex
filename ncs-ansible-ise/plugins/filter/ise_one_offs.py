@@ -596,6 +596,33 @@ def ise_nad_rows(rows: Any, nad_query: str = "") -> list[dict[str, Any]]:
     return [row for row in _as_list(rows) if isinstance(row, dict) and _contains(row, nad_query, fields)]
 
 
+def ise_sessions_on_nads(rows: Any, nads: Any) -> list[dict[str, Any]]:
+    """Filter sessions/auth rows to those whose NAD IP matches one of *nads*.
+
+    MnT ``Session/ActiveList`` only carries ``nas_ip_address`` — no NAD name —
+    so ``ise_nad_rows(query)`` matching on a name query yields nothing for
+    ActiveList sessions. Caller passes the (already query-narrowed) NAD row
+    list and we use the NAD ``ip_address`` field as the join key. NAD rows
+    coming from ``ise_network_devices_info`` carry ``ip_address``; older
+    paths via ``ise_network_device_rows`` use the same field.
+    """
+    nad_ips: set[str] = set()
+    for nad in _as_list(nads):
+        if not isinstance(nad, dict):
+            continue
+        ip = str(nad.get("ip_address") or "").strip()
+        if ip:
+            nad_ips.add(ip)
+    if not nad_ips:
+        return []
+    return [
+        row
+        for row in _as_list(rows)
+        if isinstance(row, dict)
+        and str(row.get("nad_ip") or row.get("nas_ip_address") or "").strip() in nad_ips
+    ]
+
+
 def ise_port_rows(rows: Any, nad_query: str = "", port_query: str = "") -> list[dict[str, Any]]:
     return [
         row
@@ -922,6 +949,7 @@ class FilterModule:
             "ise_mnt_auth_status": ise_mnt_auth_status,
             "ise_search_rows": ise_search_rows,
             "ise_nad_rows": ise_nad_rows,
+            "ise_sessions_on_nads": ise_sessions_on_nads,
             "ise_port_rows": ise_port_rows,
             "ise_default_policy_rows": ise_default_policy_rows,
             "ise_high_repeat_rows": ise_high_repeat_rows,

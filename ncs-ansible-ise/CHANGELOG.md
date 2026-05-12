@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.4.0
+
+- Fixed "Endpoints on NAD" and other NAD-scoped one-offs that were
+  showing "0 match network devices", "0 recent endpoint auths", and a
+  blank-columns active-endpoints table.
+- `ise_network_devices_info`: new `name_filter` parameter feeds an ERS
+  server-side `filter=name.CONTAINS.<value>` so NAD lookups hit the
+  full fleet, not just page 1. New `include_settings: false` mode
+  returns ERS summaries only when callers don't need the per-NAD
+  detail fan-out. Row output also carries `id`/`location`/`type` now.
+- `ise_session_details_info`: new module. Lists MnT
+  `Session/ActiveList`, narrows by `nas_ip_address` against a
+  caller-supplied NAD IP set, then fans out
+  `Session/MACAddress/<mac>` per session in a `ThreadPoolExecutor`.
+  Fills the port/vlan/auth_protocol/authz-profile/matched-rule columns
+  that the condensed ActiveList payload doesn't carry.
+- New filter `ise_sessions_on_nads(sessions, nads)` joins active
+  sessions to matched NADs by IP — ActiveList rows only have
+  `nas_ip_address`, so substring name queries via `ise_nad_rows` were
+  dropping every match. `switch_lookup` and `nad_troubleshooting`
+  reports use the new filter; `nad_endpoint_inventory` consumes the
+  fan-out output directly.
+- One unified `Inventory NADs` task replaces the page-1 ERS GET and
+  the audit-only module call. `nad_missing_protocols` leaves
+  `name_filter` empty to audit everything; the lookup ops pass
+  `_ise_nad_query`.
+
 ## 0.3.1
 
 - Replaced the `nad_missing_protocols` async + async_status fan-out with a
