@@ -170,16 +170,41 @@
                                 <TextBlock x:Name="PlaybookPlaceholder" Grid.Row="1" Text="Connect to load playbooks" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 <Grid x:Name="PlaybookSplitPane" Grid.Row="1" Visibility="Collapsed">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" MinWidth="120" />
+                                        <ColumnDefinition x:Name="PlaybookTreeColumn" Width="*" MinWidth="160" />
                                         <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="2*" MinWidth="180" />
+                                        <ColumnDefinition x:Name="PlaybookPropertiesColumnDef" Width="2*" MinWidth="200" />
                                     </Grid.ColumnDefinitions>
                                     <Border Grid.Column="0" Background="#12151a" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,0">
-                                        <ScrollViewer x:Name="ActionScrollViewer" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
-                                            <TreeView x:Name="ActionTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
-                                        </ScrollViewer>
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="*" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+                                            <Border Grid.Row="0" Background="#161a20" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" CornerRadius="4,4,0,0">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox x:Name="ActionSearchBox" Grid.Column="0" Background="Transparent" BorderThickness="0" Padding="8,5,8,5" Foreground="{StaticResource TextBrush}" CaretBrush="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeSm}" ToolTip="Filter playbooks (Ctrl+F). Esc clears." />
+                                                    <Button x:Name="ActionSearchClearButton" Grid.Column="1" Content="✕" Style="{StaticResource CloseTitleBarButtonStyle}" Width="20" Height="20" MinWidth="0" Padding="0" Margin="0,0,4,0" FontSize="10" ToolTip="Clear search" Visibility="Collapsed" />
+                                                </Grid>
+                                            </Border>
+                                            <TextBlock x:Name="ActionSearchPlaceholder" Grid.Row="0" Text="Search playbooks (Ctrl+F)..." Foreground="{StaticResource TextMutedBrush}" FontStyle="Italic" FontSize="{StaticResource FontSizeSm}" Margin="10,7,0,0" IsHitTestVisible="False" VerticalAlignment="Top" />
+                                            <ScrollViewer x:Name="ActionScrollViewer" Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="4,4,0,4">
+                                                <TreeView x:Name="ActionTreeView" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource FontMono}" Padding="0" ScrollViewer.VerticalScrollBarVisibility="Disabled" />
+                                            </ScrollViewer>
+                                            <TextBlock x:Name="ActionSearchEmpty" Grid.Row="1" Text="No playbooks match." Foreground="{StaticResource TextMutedBrush}" FontStyle="Italic" FontSize="{StaticResource FontSizeSm}" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" />
+                                            <Expander x:Name="RecentExpander" Grid.Row="2" IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Padding="4">
+                                                <Expander.Header>
+                                                    <TextBlock x:Name="RecentExpanderHeader" Text="Recent" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" />
+                                                </Expander.Header>
+                                                <ListView x:Name="RecentListView" MaxHeight="160" Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeSm}" ToolTip="Double-click to re-select playbook and restore its limit/options" />
+                                            </Expander>
+                                        </Grid>
                                     </Border>
-                                    <GridSplitter Grid.Column="1" Style="{StaticResource ColumnSplitterStyle}" />
+                                    <GridSplitter x:Name="PlaybookSplitter" Grid.Column="1" Style="{StaticResource ColumnSplitterStyle}" />
                                     <ScrollViewer x:Name="ActionPropertiesPanel" Grid.Column="2" VerticalScrollBarVisibility="Auto" Margin="0" Visibility="Collapsed">
                                         <StackPanel>
                                             <TextBlock x:Name="ActionSelectionTitle" Text="Select a playbook" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeLg}" FontWeight="SemiBold" Margin="{StaticResource MarginSectionTitle}" TextTrimming="CharacterEllipsis" />
@@ -529,6 +554,13 @@
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Left" Text="Console" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeTitle}" FontWeight="Bold" VerticalAlignment="Center" />
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                                <TextBlock Text="Show:" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                <ComboBox x:Name="ConsoleFilterCombo" MinWidth="120" Margin="0,0,8,0" VerticalAlignment="Center" FontSize="{StaticResource FontSizeSm}" ToolTip="Filter console output. 'Errors only' is useful for post-mortems on long runs.">
+                                    <ComboBoxItem Content="All output" IsSelected="True" Tag="all" />
+                                    <ComboBoxItem Content="Errors + changed" Tag="errors_changed" />
+                                    <ComboBoxItem Content="Errors only" Tag="errors_only" />
+                                    <ComboBoxItem Content="Hide ok tasks" Tag="hide_ok" />
+                                </ComboBox>
                                 <Button x:Name="CopyOutputButton" Style="{StaticResource SecondaryButtonStyle}" MinWidth="0" Padding="{StaticResource PaddingSm}" FontSize="{StaticResource FontSizeMd}" ToolTip="Copy output to clipboard">
                                     <StackPanel Orientation="Horizontal">
                                         <Path Width="10" Height="10" Stretch="Uniform" Stroke="{StaticResource TextBrush}" StrokeThickness="1.5" Fill="Transparent" Data="M4 0 L12 0 L12 10 L4 10 Z M0 3 L0 13 L8 13 L8 10" VerticalAlignment="Center" Margin="0,0,4,0" />
@@ -607,7 +639,16 @@
                             <TextBlock x:Name="RunMetaText" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeXs}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
                     </Border>
-                    <TextBlock x:Name="StatusTextBlock" Grid.Column="2" Text="Ready." TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="{StaticResource MarginStatusItem}" />
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}">
+                        <ProgressBar x:Name="BusyIndicator" IsIndeterminate="True" Width="60" Height="4" Margin="0,0,8,0" Foreground="{StaticResource AccentBrush}" Background="#1e2228" BorderThickness="0" Visibility="Collapsed" />
+                        <TextBlock x:Name="StatusTextBlock" Text="Ready." TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeMd}" VerticalAlignment="Center" ToolTip="{Binding Path=Text, RelativeSource={RelativeSource Self}}">
+                            <TextBlock.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem x:Name="StatusCopyMenuItem" Header="Copy status text" />
+                                </ContextMenu>
+                            </TextBlock.ContextMenu>
+                        </TextBlock>
+                    </StackPanel>
                     <StackPanel x:Name="ExitCodePanel" Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="{StaticResource MarginStatusItem}" Visibility="Collapsed">
                         <TextBlock Text="Exit:" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginLabelValue}" />
                         <TextBlock x:Name="ExitCodeTextBlock" Text="-" Foreground="{StaticResource TextBrush}" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" />

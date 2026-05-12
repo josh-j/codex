@@ -23,6 +23,17 @@ function Get-NcsBrush {
 }
 
 $script:NcsLimitPickers = @{}
+$script:NcsPreviousActionId = ""
+
+# MinWidth (px) applied to each side-panel column when it's open. Below these
+# floors the panel's content (titles, splitters, form fields) starts overlapping;
+# above is comfortable.
+$script:NcsPanelMinWidths = @{
+    Settings  = 240
+    Operate   = 320
+    Reports   = 280
+    Schedules = 320
+}
 
 function Get-NcsLimitPickerContext {
     param([Parameter(Mandatory)] $Tree)
@@ -325,6 +336,117 @@ function Show-NcsPasswordPrompt {
     return $null
 }
 
+function Show-NcsMutatingConfirm {
+    <#
+    .SYNOPSIS Modal confirm dialog for mutating actions. Returns $true if the user confirmed.
+    .DESCRIPTION When -RequireTyped is set, the user must type "yes" before the Run button enables.
+                 Otherwise this is a single-button confirm with the limit shown so the operator can
+                 verify scope. Uses the same $sender-recovery pattern as Show-NcsPasswordPrompt to
+                 stay safe under StrictMode.
+    #>
+    param(
+        [Parameter(Mandatory)] [System.Windows.Window] $Owner,
+        [Parameter(Mandatory)] [string] $Playbook,
+        [string] $Limit = "",
+        [switch] $RequireTyped
+    )
+
+    $box = [System.Windows.Window]::new()
+    $box.Title = ""
+    $box.Width = 420
+    $box.SizeToContent = "Height"
+    $box.WindowStartupLocation = "CenterOwner"
+    $box.Owner = $Owner
+    $box.WindowStyle = "None"
+    $box.ResizeMode = "NoResize"
+    $box.Background = Get-NcsBrush -Color "#181b1f"
+    $box.BorderBrush = Get-NcsBrush -Color "#f06478"
+    $box.BorderThickness = [System.Windows.Thickness]::new(1)
+
+    $sp = [System.Windows.Controls.StackPanel]::new()
+    $sp.Margin = [System.Windows.Thickness]::new(16)
+
+    $titleBlock = [System.Windows.Controls.TextBlock]::new()
+    $titleBlock.Text = "Confirm Mutating Action"
+    $titleBlock.Foreground = Get-NcsBrush -Color "#f06478"
+    $titleBlock.FontSize = 14
+    $titleBlock.FontWeight = "Bold"
+    $titleBlock.Margin = [System.Windows.Thickness]::new(0,0,0,8)
+    $sp.Children.Add($titleBlock) | Out-Null
+
+    $scope = if ([string]::IsNullOrWhiteSpace($Limit)) { "ALL hosts in inventory" } else { $Limit }
+    $msg = [System.Windows.Controls.TextBlock]::new()
+    $msg.Text = "This will run a mutating playbook.`n`nPlaybook: $Playbook`nScope: $scope"
+    $msg.Foreground = Get-NcsBrush -Color "#d8dce2"
+    $msg.Margin = [System.Windows.Thickness]::new(0,0,0,8)
+    $msg.TextWrapping = "Wrap"
+    $msg.FontSize = 11
+    $sp.Children.Add($msg) | Out-Null
+
+    $typed = $null
+    if ($RequireTyped) {
+        $warn = [System.Windows.Controls.TextBlock]::new()
+        $warn.Text = "No --limit was set. Type 'yes' to confirm running against ALL hosts:"
+        $warn.Foreground = Get-NcsBrush -Color "#f06478"
+        $warn.Margin = [System.Windows.Thickness]::new(0,0,0,4)
+        $warn.TextWrapping = "Wrap"
+        $warn.FontSize = 11
+        $sp.Children.Add($warn) | Out-Null
+
+        $typed = [System.Windows.Controls.TextBox]::new()
+        $typed.Background = Get-NcsBrush -Color "#1e2228"
+        $typed.Foreground = Get-NcsBrush -Color "#d8dce2"
+        $typed.BorderBrush = Get-NcsBrush -Color "#2c3038"
+        $typed.CaretBrush = Get-NcsBrush -Color "#d8dce2"
+        $typed.Padding = [System.Windows.Thickness]::new(8,5,8,5)
+        $typed.FontFamily = [System.Windows.Media.FontFamily]::new("Consolas")
+        $sp.Children.Add($typed) | Out-Null
+    }
+
+    $btnPanel = [System.Windows.Controls.StackPanel]::new()
+    $btnPanel.Orientation = "Horizontal"
+    $btnPanel.HorizontalAlignment = "Right"
+    $btnPanel.Margin = [System.Windows.Thickness]::new(0,10,0,0)
+
+    $okBtn = [System.Windows.Controls.Button]::new()
+    $okBtn.Content = "Run"
+    $okBtn.Background = Get-NcsBrush -Color "#1e2228"
+    $okBtn.Foreground = Get-NcsBrush -Color "#f06478"
+    $okBtn.BorderBrush = Get-NcsBrush -Color "#f06478"
+    $okBtn.Padding = [System.Windows.Thickness]::new(12,5,12,5)
+    $okBtn.Margin = [System.Windows.Thickness]::new(6,0,0,0)
+    $okBtn.IsDefault = $true
+    $okBtn.Add_Click({
+        param($sender, $e)
+        [System.Windows.Window]::GetWindow($sender).DialogResult = $true
+    })
+
+    $cancelBtn = [System.Windows.Controls.Button]::new()
+    $cancelBtn.Content = "Cancel"
+    $cancelBtn.Background = Get-NcsBrush -Color "#1e2228"
+    $cancelBtn.Foreground = Get-NcsBrush -Color "#8e939c"
+    $cancelBtn.BorderBrush = Get-NcsBrush -Color "#2c3038"
+    $cancelBtn.Padding = [System.Windows.Thickness]::new(12,5,12,5)
+    $cancelBtn.IsCancel = $true
+    $cancelBtn.Add_Click({
+        param($sender, $e)
+        [System.Windows.Window]::GetWindow($sender).DialogResult = $false
+    })
+
+    $btnPanel.Children.Add($cancelBtn) | Out-Null
+    $btnPanel.Children.Add($okBtn) | Out-Null
+    $sp.Children.Add($btnPanel) | Out-Null
+    $box.Content = $sp
+    if ($RequireTyped) { $typed.Focus() | Out-Null } else { $okBtn.Focus() | Out-Null }
+
+    $result = $box.ShowDialog()
+    if ($result -ne $true) { return $false }
+    if ($RequireTyped) {
+        return ($typed.Text.Trim().ToLowerInvariant() -eq "yes")
+    }
+    return $true
+}
+
 function Import-NcsWpfAssemblies {
     param(
         [string] $ProjectRoot
@@ -594,6 +716,16 @@ function Get-NcsXamlControlMap {
         "PlaybooksCloseButton",
         "PlaybookPlaceholder",
         "PlaybookSplitPane",
+        "ActionSearchBox",
+        "ActionSearchClearButton",
+        "ActionSearchPlaceholder",
+        "ActionSearchEmpty",
+        "RecentExpander",
+        "RecentExpanderHeader",
+        "RecentListView",
+        "PlaybookTreeColumn",
+        "PlaybookPropertiesColumnDef",
+        "PlaybookSplitter",
         "ActionTreeView",
         "ActionPropertiesPanel",
         "ActionSelectionTitle",
@@ -630,6 +762,7 @@ function Get-NcsXamlControlMap {
         "CopyOutputButton",
         "ExportOutputButton",
         "ConsoleTextBox",
+        "ConsoleFilterCombo",
         "ConsolePane",
         "ConsoleSplitter",
         "ConsoleToggleButton",
@@ -686,6 +819,8 @@ function Get-NcsXamlControlMap {
         "ScheduleCancelButton",
         "ScheduleSaveButton",
         "StatusTextBlock",
+        "BusyIndicator",
+        "StatusCopyMenuItem",
         "ExitCodePanel",
         "ExitCodeTextBlock",
         "DurationPanel",
@@ -906,6 +1041,65 @@ function Find-NcsFirstLeafItem {
     return $null
 }
 
+function Update-NcsActionTreeFilter {
+    <#
+    .SYNOPSIS Filter ActionTreeView leaves to those whose Header text or Tag substring-matches the query.
+    .DESCRIPTION Group nodes stay visible if any descendant matches and auto-expand on non-empty query.
+                 Returns the count of visible leaves so callers can show "no results" hints.
+    #>
+    param(
+        [Parameter(Mandatory)] [System.Windows.Controls.TreeView] $Tree,
+        [string] $Query
+    )
+
+    $q = if ($null -eq $Query) { "" } else { $Query.Trim() }
+    $matchAll = [string]::IsNullOrEmpty($q)
+    $lcQuery = $q.ToLowerInvariant()
+
+    $itemMatches = {
+        param($node)
+        $header = ""
+        try {
+            $h = $node.Header
+            if ($h -is [System.Windows.Controls.StackPanel]) {
+                foreach ($c in $h.Children) {
+                    if ($c -is [System.Windows.Controls.TextBlock]) { $header += " " + [string] $c.Text }
+                }
+            } elseif ($null -ne $h) {
+                $header = [string] $h
+            }
+        } catch { $null = $_ }
+        $tag = [string] $node.Tag
+        $hay = ($header + " " + $tag).ToLowerInvariant()
+        return $hay.Contains($lcQuery)
+    }
+
+    $walk = {
+        param($node)
+        $isLeaf = $node.Items.Count -eq 0
+        if ($isLeaf) {
+            $visible = $matchAll -or (& $itemMatches $node)
+            $node.Visibility = if ($visible) { "Visible" } else { "Collapsed" }
+            return [int] $visible
+        }
+        $childMatches = 0
+        foreach ($child in @($node.Items)) {
+            $childMatches += [int] (& $walk $child)
+        }
+        $self = (& $itemMatches $node)
+        $visible = $matchAll -or $childMatches -gt 0 -or $self
+        $node.Visibility = if ($visible) { "Visible" } else { "Collapsed" }
+        if (-not $matchAll -and $childMatches -gt 0) { $node.IsExpanded = $true }
+        return $childMatches
+    }
+
+    $visibleLeaves = 0
+    foreach ($root in @($Tree.Items)) {
+        $visibleLeaves += [int] (& $walk $root)
+    }
+    return $visibleLeaves
+}
+
 function Select-NcsTreeViewItem {
     param(
         [Parameter(Mandatory)]
@@ -1114,8 +1308,245 @@ function Update-NcsActionOptions {
     $hasOptions = $ActionItem.ContainsKey('options') -and @($ActionItem['options']).Length -gt 0
     if (-not $hasOptions) { return }
 
+    # Split curated # >>> options from fallback_options (vars: keys). Curated stay
+    # at the top; auto-detected go under a collapsed expander so they're discoverable
+    # but don't crowd the panel.
+    $curated = @()
+    $auto    = @()
+    foreach ($opt in @($ActionItem['options'])) {
+        if ($opt -is [hashtable] -and $opt.ContainsKey('auto_detected') -and $opt['auto_detected']) {
+            $auto += $opt
+        } else {
+            $curated += $opt
+        }
+    }
+
     $Controls.ActionOptionsPanel.Visibility = "Visible"
-    Add-NcsOptionControls -Panel $Controls.ActionOptionsPanel -Options $ActionItem['options']
+    if ($curated.Length -gt 0) {
+        Add-NcsOptionControls -Panel $Controls.ActionOptionsPanel -Options $curated
+    }
+    if ($auto.Length -gt 0) {
+        $exp = [System.Windows.Controls.Expander]::new()
+        $exp.IsExpanded = $false
+        $exp.Margin = [System.Windows.Thickness]::new(0, 8, 0, 0)
+        $hdr = [System.Windows.Controls.TextBlock]::new()
+        $hdr.Text = "Auto-detected vars ($($auto.Length))"
+        $hdr.Foreground = Get-NcsBrush -Color "#8e939c"
+        $hdr.FontSize = 11
+        $hdr.FontWeight = "SemiBold"
+        $hdr.ToolTip = "Inferred from the playbook's vars: block. Override defaults here without editing the playbook."
+        $exp.Header = $hdr
+        $inner = [System.Windows.Controls.StackPanel]::new()
+        $inner.Margin = [System.Windows.Thickness]::new(0, 4, 0, 0)
+        Add-NcsOptionControls -Panel $inner -Options $auto
+        $exp.Content = $inner
+        $Controls.ActionOptionsPanel.Children.Add($exp) | Out-Null
+    }
+}
+
+function Set-NcsOptionPanelValues {
+    <#
+    .SYNOPSIS Apply a saved hashtable of option values onto the controls in the options panel.
+    .DESCRIPTION Walks the panel just like Get-NcsControlValues, matching each control by its Tag.
+                 Skips controls whose name starts with _ncs_ or whose Tag is empty.
+    #>
+    param(
+        [System.Windows.Controls.Panel] $Panel,
+        [hashtable] $Values
+    )
+    if ($null -eq $Panel -or $null -eq $Values) { return }
+    foreach ($child in @($Panel.Children)) {
+        if ($child -is [System.Windows.Controls.Panel]) {
+            Set-NcsOptionPanelValues -Panel $child -Values $Values
+            continue
+        }
+        $tag = [string] $child.Tag
+        if ([string]::IsNullOrWhiteSpace($tag) -or $tag.StartsWith('_ncs_')) { continue }
+        if (-not $Values.ContainsKey($tag)) { continue }
+        $val = [string] $Values[$tag]
+        if ($child -is [System.Windows.Controls.TextBox]) {
+            $child.Text = $val
+        } elseif ($child -is [System.Windows.Controls.ComboBox]) {
+            if ($child.Items.Count -gt 0 -and $child.Items.Contains($val)) {
+                $child.SelectedItem = $val
+            }
+        } elseif ($child -is [System.Windows.Controls.PasswordBox]) {
+            $child.Password = $val
+        } elseif ($child -is [System.Windows.Controls.CheckBox]) {
+            $child.IsChecked = ($val -eq "true" -or $val -eq "yes" -or $val -eq "True")
+        }
+    }
+}
+
+function Format-NcsHistoryAge {
+    param([datetime] $When)
+    $delta = [datetime]::UtcNow - $When.ToUniversalTime()
+    if ($delta.TotalSeconds -lt 60) { return "just now" }
+    if ($delta.TotalMinutes -lt 60) { return "{0}m ago" -f [int] $delta.TotalMinutes }
+    if ($delta.TotalHours -lt 24) { return "{0}h ago" -f [int] $delta.TotalHours }
+    return "{0}d ago" -f [int] $delta.TotalDays
+}
+
+function Update-NcsRecentList {
+    <#
+    .SYNOPSIS Repopulate the Recent ListView from Settings.RunHistory (most recent first).
+    #>
+    param(
+        [Parameter(Mandatory)] [hashtable] $Controls,
+        [Parameter(Mandatory)] [NcsConsoleSettings] $Settings
+    )
+    $list = $Controls.RecentListView
+    $list.Items.Clear()
+    if ($null -eq $Settings.RunHistory -or $Settings.RunHistory.Count -eq 0) {
+        $Controls.RecentExpanderHeader.Text = "Recent"
+        return
+    }
+    $Controls.RecentExpanderHeader.Text = "Recent ($($Settings.RunHistory.Count))"
+    for ($i = $Settings.RunHistory.Count - 1; $i -ge 0; $i--) {
+        $entry = $Settings.RunHistory[$i]
+        $icon = switch ($entry.State) {
+            "Succeeded" { "✓" }
+            "Failed"    { "✗" }
+            "Canceled"  { "⊘" }
+            default     { "·" }
+        }
+        $color = switch ($entry.State) {
+            "Succeeded" { "#3fb950" }
+            "Failed"    { "#f06478" }
+            "Canceled"  { "#c0a16b" }
+            default     { "#8e939c" }
+        }
+        $row = [System.Windows.Controls.StackPanel]::new()
+        $row.Orientation = "Horizontal"
+        $iconBlock = [System.Windows.Controls.TextBlock]::new()
+        $iconBlock.Text = $icon
+        $iconBlock.Foreground = Get-NcsBrush -Color $color
+        $iconBlock.FontWeight = "Bold"
+        $iconBlock.Width = 14
+        $row.Children.Add($iconBlock) | Out-Null
+        $labelBlock = [System.Windows.Controls.TextBlock]::new()
+        $labelBlock.Text = if (-not [string]::IsNullOrWhiteSpace($entry.Label)) { $entry.Label } else { $entry.ActionId }
+        $labelBlock.Foreground = Get-NcsBrush -Color "#d8dce2"
+        $labelBlock.TextTrimming = "CharacterEllipsis"
+        $labelBlock.MinWidth = 80
+        $labelBlock.MaxWidth = 200
+        $row.Children.Add($labelBlock) | Out-Null
+        if (-not [string]::IsNullOrWhiteSpace($entry.Limit)) {
+            $sep = [System.Windows.Controls.TextBlock]::new()
+            $sep.Text = " · "
+            $sep.Foreground = Get-NcsBrush -Color "#444b55"
+            $row.Children.Add($sep) | Out-Null
+            $limitBlock = [System.Windows.Controls.TextBlock]::new()
+            $limitBlock.Text = $entry.Limit
+            $limitBlock.Foreground = Get-NcsBrush -Color "#8e939c"
+            $limitBlock.FontFamily = [System.Windows.Media.FontFamily]::new("Consolas")
+            $limitBlock.TextTrimming = "CharacterEllipsis"
+            $limitBlock.MaxWidth = 140
+            $row.Children.Add($limitBlock) | Out-Null
+        }
+        $ageSep = [System.Windows.Controls.TextBlock]::new()
+        $ageSep.Text = "  "
+        $row.Children.Add($ageSep) | Out-Null
+        $age = [System.Windows.Controls.TextBlock]::new()
+        $age.Text = Format-NcsHistoryAge -When $entry.StartedAt
+        $age.Foreground = Get-NcsBrush -Color "#444b55"
+        $age.FontSize = 10
+        $row.Children.Add($age) | Out-Null
+
+        $listItem = [System.Windows.Controls.ListViewItem]::new()
+        $listItem.Content = $row
+        $listItem.Tag = $entry
+        $listItem.ToolTip = "$($entry.Label)`nPlaybook: $($entry.Playbook)`nLimit: $($entry.Limit)`nExit: $($entry.ExitCode) · $($entry.State) · $([math]::Round($entry.DurationSeconds))s"
+        $list.Items.Add($listItem) | Out-Null
+    }
+}
+
+function Add-NcsRunHistoryEntry {
+    param(
+        [Parameter(Mandatory)] [NcsConsoleSettings] $Settings,
+        [Parameter(Mandatory)] [NcsRunHistoryEntry] $Entry
+    )
+    $Settings.RunHistory.Add($Entry)
+    while ($Settings.RunHistory.Count -gt 20) {
+        $Settings.RunHistory.RemoveAt(0)
+    }
+}
+
+function Get-NcsStarRatio {
+    <#
+    .SYNOPSIS Return the star ratio of a GridLength, or a default if it isn't a Star length.
+    .DESCRIPTION After a user drags a splitter, the affected ColumnDefinition.Width stays Star
+                 but its Value changes — saving that Value preserves the user's layout proportion.
+    #>
+    param([System.Windows.GridLength] $Length, [double] $Default = 1.0)
+    if ($Length.IsStar -and $Length.Value -gt 0) { return [double] $Length.Value }
+    return $Default
+}
+
+function Set-NcsBusy {
+    <#
+    .SYNOPSIS Show or hide the indeterminate progress indicator in the status bar.
+    .DESCRIPTION Optionally overrides the status text. Call with -Busy:$false at the end
+                 of an async op (in a finally block).
+    #>
+    param(
+        [Parameter(Mandatory)] [hashtable] $Controls,
+        [Parameter(Mandatory)] [bool] $Busy,
+        [string] $Status
+    )
+    $Controls.BusyIndicator.Visibility = if ($Busy) { "Visible" } else { "Collapsed" }
+    if (-not [string]::IsNullOrEmpty($Status)) {
+        $Controls.StatusTextBlock.Text = $Status
+    }
+}
+
+function Save-NcsActionMemory {
+    <#
+    .SYNOPSIS Capture the current Limit/Tags/Options from the action panel into Settings.ActionState[$ActionId].
+    #>
+    param(
+        [Parameter(Mandatory)] [hashtable] $Controls,
+        [Parameter(Mandatory)] [NcsConsoleSettings] $Settings,
+        [string] $ActionId
+    )
+    if ([string]::IsNullOrWhiteSpace($ActionId)) { return }
+    $mem = [NcsActionMemory]::new()
+    $mem.Limit = $Controls.ActionLimitTextBox.Text.Trim()
+    $mem.Tags  = $Controls.ActionTagsTextBox.Text.Trim()
+    $mem.Options = Get-NcsControlValues -Panel $Controls.ActionOptionsPanel
+    $mem.UpdatedAt = [datetime]::UtcNow
+    # Only persist memory when at least one field is non-default — otherwise we'd
+    # store empty entries for every action the user ever clicked on.
+    if ([string]::IsNullOrWhiteSpace($mem.Limit) -and [string]::IsNullOrWhiteSpace($mem.Tags) -and $mem.Options.Count -eq 0) {
+        if ($Settings.ActionState.ContainsKey($ActionId)) {
+            [void] $Settings.ActionState.Remove($ActionId)
+        }
+        return
+    }
+    $Settings.ActionState[$ActionId] = $mem
+}
+
+function Restore-NcsActionMemory {
+    <#
+    .SYNOPSIS Apply Settings.ActionState[$ActionId] to the action panel controls. Returns $true if anything was restored.
+    .DESCRIPTION Caller is responsible for repopulating the options panel BEFORE calling this — option controls have to
+                 exist before we can write values onto them.
+    #>
+    param(
+        [Parameter(Mandatory)] [hashtable] $Controls,
+        [Parameter(Mandatory)] [NcsConsoleSettings] $Settings,
+        [string] $ActionId
+    )
+    if ([string]::IsNullOrWhiteSpace($ActionId)) { return $false }
+    if (-not $Settings.ActionState.ContainsKey($ActionId)) { return $false }
+    $mem = $Settings.ActionState[$ActionId]
+    if ($null -eq $mem) { return $false }
+    $Controls.ActionLimitTextBox.Text = [string] $mem.Limit
+    $Controls.ActionTagsTextBox.Text  = [string] $mem.Tags
+    if ($null -ne $mem.Options -and $mem.Options.Count -gt 0) {
+        Set-NcsOptionPanelValues -Panel $Controls.ActionOptionsPanel -Values $mem.Options
+    }
+    return $true
 }
 
 function Get-NcsControlValues {
@@ -1423,7 +1854,31 @@ $script:NcsConsoleLineTimestampPattern = '^(\[\d{2}:\d{2}:\d{2}\])\s*(\[stderr\]
 $script:NcsLineColorCache = [System.Collections.Generic.Dictionary[string,object]]::new()
 $script:NcsLineColorCacheMax = 512
 
-function Get-NcsLineColor {
+# Filter mode for console output. Set via the Console Show: combobox; consumed by
+# Add-NcsConsoleLines (skip insertion when hidden) and Apply-NcsConsoleFilter
+# (toggle visibility of existing paragraphs). The complete ordered list of all
+# paragraphs we've ever rendered (after max-lines trimming) lives in
+# $script:NcsConsoleAllParagraphs so the filter switch can rebuild the document.
+$script:NcsConsoleFilterMode = "all"
+$script:NcsConsoleAllParagraphs = [System.Collections.Generic.List[object]]::new()
+
+function Test-NcsCategoryVisible {
+    param([string] $Category, [string] $Mode)
+    switch ($Mode) {
+        "all" { return $true }
+        "errors_changed" { return $Category -in @("error","changed","warning","boundary") }
+        "errors_only"    { return $Category -in @("error","boundary") }
+        "hide_ok"        { return $Category -ne "ok" }
+        default { return $true }
+    }
+}
+
+function Get-NcsLineClassification {
+    <#
+    .SYNOPSIS Single regex pass that returns @{ Category = "..."; Color = "..." } for an output line.
+    .DESCRIPTION Hot path during runs — cached by stripped text. Category drives the filter
+                 dropdown; color drives the rendered foreground.
+    #>
     param([string] $Line)
 
     $text = $Line -replace '^\[\d{2}:\d{2}:\d{2}\]\s*(\[stderr\]\s*)?', ''
@@ -1433,28 +1888,39 @@ function Get-NcsLineColor {
         return $cached
     }
 
-    $color = $null
+    $category = "info"
     if ($text -match '^\s*(fatal|ERROR)' -or $text -match '\bfailed=\d*[1-9]' -or $text -match '\bunreachable=\d*[1-9]' -or $text -match '\bignored=\d*[1-9]') {
-        $color = $script:NcsConsoleColors.Error
+        $category = "error"
     } elseif ($text -match '^\s*(changed):|changed=\d*[1-9]') {
-        $color = $script:NcsConsoleColors.Warning
+        $category = "changed"
     } elseif ($text -match '^\s*(skipping|rescued):|skipped=\d*[1-9]' -or $text -match '\[(WARNING|DEPRECATION WARNING)\]') {
-        $color = $script:NcsConsoleColors.Warning
+        $category = "warning"
     } elseif ($text -match '^(PLAY|TASK|RUNNING HANDLER) \[' -or $text -match '^PLAY RECAP') {
-        $color = $script:NcsConsoleColors.Info
+        $category = "boundary"
     } elseif ($text -match '^\s*(ok|included):' -or $text -match '\bok=\d*[1-9]') {
-        $color = $script:NcsConsoleColors.Success
+        $category = "ok"
     } elseif ($Line -match '\[stderr\]') {
-        $color = $script:NcsConsoleColors.Error
+        $category = "error"
     } elseif ($text -match '^>' -or $text -match '^---') {
-        $color = $script:NcsConsoleColors.Muted
+        $category = "muted"
     }
 
+    $color = switch ($category) {
+        "error"    { $script:NcsConsoleColors.Error }
+        "changed"  { $script:NcsConsoleColors.Warning }
+        "warning"  { $script:NcsConsoleColors.Warning }
+        "boundary" { $script:NcsConsoleColors.Info }
+        "ok"       { $script:NcsConsoleColors.Success }
+        "muted"    { $script:NcsConsoleColors.Muted }
+        default    { $null }
+    }
+
+    $entry = @{ Category = $category; Color = $color }
     if ($script:NcsLineColorCache.Count -ge $script:NcsLineColorCacheMax) {
         $script:NcsLineColorCache.Clear()
     }
-    $script:NcsLineColorCache[$text] = $color
-    return $color
+    $script:NcsLineColorCache[$text] = $entry
+    return $entry
 }
 
 function Add-NcsConsoleLines {
@@ -1476,6 +1942,8 @@ function Add-NcsConsoleLines {
     # coalescing layout invalidation.
     foreach ($line in $Lines) {
         $para = [System.Windows.Documents.Paragraph]::new()
+        $klass = Get-NcsLineClassification -Line $line
+        $para.Tag = $klass.Category
 
         if ($line -match $script:NcsConsoleLineTimestampPattern) {
             $tsRun = [System.Windows.Documents.Run]::new($Matches[1] + " ")
@@ -1492,18 +1960,46 @@ function Add-NcsConsoleLines {
         }
 
         $bodyRun = [System.Windows.Documents.Run]::new($bodyText)
-        $color = Get-NcsLineColor -Line $line
-        if ($null -ne $color) {
-            $bodyRun.Foreground = Get-NcsBrush -Color $color
+        if ($null -ne $klass.Color) {
+            $bodyRun.Foreground = Get-NcsBrush -Color $klass.Color
         }
         $para.Inlines.Add($bodyRun)
-        $doc.Blocks.Add($para)
+        [void] $script:NcsConsoleAllParagraphs.Add($para)
+        if (Test-NcsCategoryVisible -Category $klass.Category -Mode $script:NcsConsoleFilterMode) {
+            $doc.Blocks.Add($para)
+        }
     }
 
-    if ($doc.Blocks.Count -gt $script:NcsConsoleMaxLines) {
+    if ($script:NcsConsoleAllParagraphs.Count -gt $script:NcsConsoleMaxLines) {
         $target = [int]($script:NcsConsoleMaxLines * 0.9)
-        while ($doc.Blocks.Count -gt $target) {
-            $doc.Blocks.Remove($doc.Blocks.FirstBlock)
+        $toRemove = $script:NcsConsoleAllParagraphs.Count - $target
+        for ($i = 0; $i -lt $toRemove; $i++) {
+            $p = $script:NcsConsoleAllParagraphs[0]
+            $script:NcsConsoleAllParagraphs.RemoveAt(0)
+            if ($null -ne $p -and $null -ne $p.Parent) {
+                $doc.Blocks.Remove($p)
+            }
+        }
+    }
+}
+
+function Clear-NcsConsoleOutput {
+    param([Parameter(Mandatory)] [hashtable] $Controls)
+    $Controls.ConsoleTextBox.Document.Blocks.Clear()
+    $script:NcsConsoleAllParagraphs.Clear()
+}
+
+function Apply-NcsConsoleFilter {
+    <#
+    .SYNOPSIS Re-render the RichTextBox from $script:NcsConsoleAllParagraphs honoring the current filter.
+    #>
+    param([Parameter(Mandatory)] [hashtable] $Controls)
+    $doc = $Controls.ConsoleTextBox.Document
+    $doc.Blocks.Clear()
+    foreach ($p in $script:NcsConsoleAllParagraphs) {
+        $cat = [string] $p.Tag
+        if (Test-NcsCategoryVisible -Category $cat -Mode $script:NcsConsoleFilterMode) {
+            $doc.Blocks.Add($p)
         }
     }
 }
@@ -1735,6 +2231,12 @@ function Show-NcsConsoleApp {
     Set-NcsRunStateBadge -Controls $controls -State "Idle"
     Set-NcsPreflightState -Controls $controls -State "Not Connected"
     $controls.RunMetaText.Text = ""
+    Update-NcsRecentList -Controls $controls -Settings $state.Settings
+
+    if ($state.Settings.PlaybookTreeColumnWidth -gt 0 -and $state.Settings.PlaybookPropertiesColumnWidth -gt 0) {
+        $controls.PlaybookTreeColumn.Width = [System.Windows.GridLength]::new($state.Settings.PlaybookTreeColumnWidth, [System.Windows.GridUnitType]::Star)
+        $controls.PlaybookPropertiesColumnDef.Width = [System.Windows.GridLength]::new($state.Settings.PlaybookPropertiesColumnWidth, [System.Windows.GridUnitType]::Star)
+    }
 
     Update-NcsWindowChromeState -Window $window -Controls $controls
     Update-NcsTopTabState -Controls $controls
@@ -2073,6 +2575,82 @@ function Show-NcsConsoleApp {
         $e.Handled = $true
     })
 
+    $applyActionSearch = {
+        $q = $controls.ActionSearchBox.Text
+        $hasQuery = -not [string]::IsNullOrEmpty($q)
+        $controls.ActionSearchPlaceholder.Visibility = if ($hasQuery -or $controls.ActionSearchBox.IsKeyboardFocused) { "Collapsed" } else { "Visible" }
+        $controls.ActionSearchClearButton.Visibility = if ($hasQuery) { "Visible" } else { "Collapsed" }
+        $visible = Update-NcsActionTreeFilter -Tree $controls.ActionTreeView -Query $q
+        $controls.ActionSearchEmpty.Visibility = if ($hasQuery -and $visible -eq 0) { "Visible" } else { "Collapsed" }
+    }
+    $controls.ActionSearchBox.Add_TextChanged({ & $applyActionSearch })
+    $controls.ActionSearchBox.Add_GotKeyboardFocus({ $controls.ActionSearchPlaceholder.Visibility = "Collapsed" })
+    $controls.ActionSearchBox.Add_LostKeyboardFocus({
+        if ([string]::IsNullOrEmpty($controls.ActionSearchBox.Text)) {
+            $controls.ActionSearchPlaceholder.Visibility = "Visible"
+        }
+    })
+    $controls.ActionSearchBox.Add_PreviewKeyDown({
+        param($_sender, $e)
+        if ($e.Key -eq "Escape") {
+            if (-not [string]::IsNullOrEmpty($controls.ActionSearchBox.Text)) {
+                $controls.ActionSearchBox.Text = ""
+                $e.Handled = $true
+            }
+        } elseif ($e.Key -eq "Enter" -or $e.Key -eq "Return") {
+            $first = $null
+            foreach ($root in @($controls.ActionTreeView.Items)) {
+                if ($root.Visibility -ne "Visible") { continue }
+                $first = Find-NcsFirstLeafItem -Parent $root
+                if ($null -ne $first -and $first.Visibility -eq "Visible") { break }
+                $first = $null
+            }
+            if ($null -ne $first) {
+                $first.IsSelected = $true
+                $first.BringIntoView()
+                $e.Handled = $true
+            }
+        }
+    })
+    $controls.ActionSearchClearButton.Add_Click({
+        $controls.ActionSearchBox.Text = ""
+        $controls.ActionSearchBox.Focus() | Out-Null
+    })
+
+    $controls.StatusCopyMenuItem.Add_Click({
+        try {
+            [System.Windows.Clipboard]::SetText([string] $controls.StatusTextBlock.Text)
+        } catch {
+            $null = $_ # Clipboard access can fail under remote desktop sessions
+        }
+    })
+
+    $controls.ConsoleFilterCombo.Add_SelectionChanged({
+        $sel = $controls.ConsoleFilterCombo.SelectedItem
+        if ($null -eq $sel) { return }
+        $mode = [string] $sel.Tag
+        if ([string]::IsNullOrWhiteSpace($mode)) { $mode = "all" }
+        if ($mode -eq $script:NcsConsoleFilterMode) { return }
+        $script:NcsConsoleFilterMode = $mode
+        Apply-NcsConsoleFilter -Controls $controls
+        Sync-NcsConsoleScroll -Controls $controls
+    })
+
+    $controls.RecentListView.Add_MouseDoubleClick({
+        $sel = $controls.RecentListView.SelectedItem
+        if ($null -eq $sel -or $null -eq $sel.Tag) { return }
+        $entry = $sel.Tag
+        # Re-select the tree item; the SelectedItemChanged handler will save the
+        # OUTGOING action's memory, then we overwrite the new selection with the
+        # history values so the run is a perfect replay of what the user did before.
+        Select-NcsTreeViewItem -TreeView $controls.ActionTreeView -Tag $entry.ActionId
+        $controls.ActionLimitTextBox.Text = [string] $entry.Limit
+        $controls.ActionTagsTextBox.Text  = [string] $entry.Tags
+        if ($null -ne $entry.Options -and $entry.Options.Count -gt 0) {
+            Set-NcsOptionPanelValues -Panel $controls.ActionOptionsPanel -Values $entry.Options
+        }
+    })
+
     $controls.ActionTreeView.Add_SelectedItemChanged({
         param($_sender, $e)
         $item = $e.NewValue
@@ -2080,9 +2658,17 @@ function Show-NcsConsoleApp {
         $playbook = ""
         $label = "Select a playbook"
         if ($null -ne $item -and -not [string]::IsNullOrWhiteSpace($item.Tag)) {
-            $state.Settings.LastAction = $item.Tag
             $actionId = [string] $item.Tag
             $label = if (-not [string]::IsNullOrWhiteSpace($item.DataContext)) { [string] $item.DataContext } else { [string] $item.Tag }
+        }
+        # Capture the prior action's limit/tags/options so the user gets them back
+        # when they revisit that playbook. Skip if the prior id matches the new id
+        # (re-selection of the same node, e.g. via Refresh).
+        if (-not [string]::IsNullOrWhiteSpace($script:NcsPreviousActionId) -and $script:NcsPreviousActionId -ne $actionId) {
+            Save-NcsActionMemory -Controls $controls -Settings $state.Settings -ActionId $script:NcsPreviousActionId
+        }
+        if (-not [string]::IsNullOrWhiteSpace($actionId)) {
+            $state.Settings.LastAction = $actionId
         }
         $controls.ActionSelectionTitle.Text = $label
         $controls.ActionPropertiesPanel.Visibility = if ([string]::IsNullOrWhiteSpace($actionId)) { "Collapsed" } else { "Visible" }
@@ -2092,7 +2678,12 @@ function Show-NcsConsoleApp {
         }
         $isMutating = $null -ne $matchedAction -and $matchedAction.ContainsKey('mutating') -and $matchedAction['mutating'] -eq $true
         $controls.MutatingWarning.Visibility = if ($isMutating) { "Visible" } else { "Collapsed" }
+        # Reset inputs to "clean slate" then either restore from memory or leave blank.
+        $controls.ActionLimitTextBox.Text = ""
+        $controls.ActionTagsTextBox.Text  = ""
         Update-NcsActionOptions -Controls $controls -ActionItem $matchedAction
+        [void] (Restore-NcsActionMemory -Controls $controls -Settings $state.Settings -ActionId $actionId)
+        $script:NcsPreviousActionId = $actionId
         & $populatePlaybookTags $playbook "ActionTagsTree" "ActionTagsEmptyText"
         & $refreshPreview
     })
@@ -2191,14 +2782,16 @@ function Show-NcsConsoleApp {
     $settingsColumn = $controls.OperatePanel.ColumnDefinitions[0]
 
     $openSettings = {
-        $settingsColumn.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
-        $settingsColumn.MinWidth = 0
+        $ratio = if ($state.Settings.SettingsColumnWidth -gt 0) { $state.Settings.SettingsColumnWidth } else { 1.0 }
+        $settingsColumn.Width = [System.Windows.GridLength]::new($ratio, [System.Windows.GridUnitType]::Star)
+        $settingsColumn.MinWidth = $script:NcsPanelMinWidths.Settings
         $controls.SettingsPanel.Visibility = "Visible"
         $controls.SettingsSplitter.Visibility = "Visible"
         Update-NcsTopTabState -Controls $controls
     }
 
     $closeSettings = {
+        $state.Settings.SettingsColumnWidth = Get-NcsStarRatio -Length $settingsColumn.Width -Default $state.Settings.SettingsColumnWidth
         $controls.SettingsPanel.Visibility = "Collapsed"
         $controls.SettingsSplitter.Visibility = "Collapsed"
         $settingsColumn.Width = [System.Windows.GridLength]::new(0)
@@ -2219,13 +2812,15 @@ function Show-NcsConsoleApp {
     $operateColumn = $controls.OperatePanel.ColumnDefinitions[2]
 
     $openOperate = {
-        $operateColumn.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
-        $operateColumn.MinWidth = 0
+        $ratio = if ($state.Settings.OperateColumnWidth -gt 0) { $state.Settings.OperateColumnWidth } else { 1.0 }
+        $operateColumn.Width = [System.Windows.GridLength]::new($ratio, [System.Windows.GridUnitType]::Star)
+        $operateColumn.MinWidth = $script:NcsPanelMinWidths.Operate
         $controls.OperateContent.Visibility = "Visible"
         Update-NcsTopTabState -Controls $controls
     }
 
     $closeOperate = {
+        $state.Settings.OperateColumnWidth = Get-NcsStarRatio -Length $operateColumn.Width -Default $state.Settings.OperateColumnWidth
         $controls.OperateContent.Visibility = "Collapsed"
         $operateColumn.Width = [System.Windows.GridLength]::new(0)
         $operateColumn.MinWidth = 0
@@ -2245,7 +2840,7 @@ function Show-NcsConsoleApp {
     $openConsole = {
         $h = $state.Settings.ConsoleDrawerHeight
         if ($h -lt 80) { $h = 280 }
-        $controls.ConsoleDrawerSplitterRow.Height = [System.Windows.GridLength]::new(4, [System.Windows.GridUnitType]::Pixel)
+        $controls.ConsoleDrawerSplitterRow.Height = [System.Windows.GridLength]::new(6, [System.Windows.GridUnitType]::Pixel)
         $controls.ConsoleDrawerRow.Height = [System.Windows.GridLength]::new($h, [System.Windows.GridUnitType]::Pixel)
         $controls.ConsoleDrawerSplitter.Visibility = "Visible"
         $controls.ConsolePane.Visibility = "Visible"
@@ -2410,8 +3005,9 @@ function Show-NcsConsoleApp {
     }
 
     $openReports = {
-        $reportsColumn.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
-        $reportsColumn.MinWidth = 0
+        $ratio = if ($state.Settings.ReportsColumnWidth -gt 0) { $state.Settings.ReportsColumnWidth } else { 1.0 }
+        $reportsColumn.Width = [System.Windows.GridLength]::new($ratio, [System.Windows.GridUnitType]::Star)
+        $reportsColumn.MinWidth = $script:NcsPanelMinWidths.Reports
         $controls.ReportsPane.Visibility = "Visible"
         $controls.ReportsSplitter.Visibility = "Visible"
         Update-NcsTopTabState -Controls $controls
@@ -2421,6 +3017,7 @@ function Show-NcsConsoleApp {
     }
 
     $closeReports = {
+        $state.Settings.ReportsColumnWidth = Get-NcsStarRatio -Length $reportsColumn.Width -Default $state.Settings.ReportsColumnWidth
         $controls.ReportsPane.Visibility = "Collapsed"
         $controls.ReportsSplitter.Visibility = "Collapsed"
         $reportsColumn.Width = [System.Windows.GridLength]::new(0)
@@ -2522,8 +3119,9 @@ function Show-NcsConsoleApp {
     $script:SchedulesLoaded = $false
 
     $openSchedules = {
-        $schedulesColumn.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
-        $schedulesColumn.MinWidth = 0
+        $ratio = if ($state.Settings.SchedulesColumnWidth -gt 0) { $state.Settings.SchedulesColumnWidth } else { 1.0 }
+        $schedulesColumn.Width = [System.Windows.GridLength]::new($ratio, [System.Windows.GridUnitType]::Star)
+        $schedulesColumn.MinWidth = $script:NcsPanelMinWidths.Schedules
         $controls.SchedulesPane.Visibility = "Visible"
         $controls.SchedulesSplitter.Visibility = "Visible"
         Update-NcsTopTabState -Controls $controls
@@ -2533,6 +3131,7 @@ function Show-NcsConsoleApp {
     }
 
     $closeSchedules = {
+        $state.Settings.SchedulesColumnWidth = Get-NcsStarRatio -Length $schedulesColumn.Width -Default $state.Settings.SchedulesColumnWidth
         $controls.SchedulesPane.Visibility = "Collapsed"
         $controls.SchedulesSplitter.Visibility = "Collapsed"
         $schedulesColumn.Width = [System.Windows.GridLength]::new(0)
@@ -2828,8 +3427,12 @@ function Show-NcsConsoleApp {
                 $state.Settings.SshKeyPassphrase = $passphrase
             }
 
-            $controls.StatusTextBlock.Text = "Connecting..."
-            $preflight = Test-NcsRemotePreflight -Settings $state.Settings
+            Set-NcsBusy -Controls $controls -Busy $true -Status "Connecting..."
+            try {
+                $preflight = Test-NcsRemotePreflight -Settings $state.Settings
+            } finally {
+                Set-NcsBusy -Controls $controls -Busy $false
+            }
             $state.PreflightResult = $preflight
             if ($preflight.IsReady) {
                 Set-NcsPreflightState -Controls $controls -State "Connected"
@@ -2892,7 +3495,7 @@ function Show-NcsConsoleApp {
     $controls.RefreshPlaybooksButton.Add_Click({
         if (-not $state.PreflightResult -or -not $state.PreflightResult.IsReady) { return }
         try {
-            $controls.StatusTextBlock.Text = "Refreshing..."
+            Set-NcsBusy -Controls $controls -Busy $true -Status "Refreshing..."
             $selectedAction = Get-NcsTreeViewSelection -Controls $controls -TreeViewName "ActionTreeView"
             try {
                 $inventoryTree = Get-NcsRemoteInventoryTree -Settings $state.Settings
@@ -2918,6 +3521,8 @@ function Show-NcsConsoleApp {
             $controls.StatusTextBlock.Text = "Refreshed."
         } catch {
             $controls.StatusTextBlock.Text = "Refresh failed: $($_.Exception.Message)"
+        } finally {
+            Set-NcsBusy -Controls $controls -Busy $false
         }
     })
 
@@ -2928,7 +3533,7 @@ function Show-NcsConsoleApp {
                 throw "Run preflight successfully before starting a remote action."
             }
 
-            $controls.ConsoleTextBox.Document.Blocks.Clear()
+            Clear-NcsConsoleOutput -Controls $controls
             $script:ConsoleLineCount = 0
             $controls.DetectedPathsListBox.ItemsSource = $null
             $controls.ExitCodeTextBlock.Text = "-"
@@ -2939,74 +3544,17 @@ function Show-NcsConsoleApp {
                 throw "Select an action before running."
             }
 
-            # Confirm before running mutating actions
+            # Confirm before running mutating actions. Two flavors:
+            #   - With a --limit set: one-click confirm. The limit scope is shown so the user can verify it.
+            #   - With no --limit: require typing "yes" because the playbook will hit every host in inventory.
             $matchedAction = if ($script:ActionItemMap.ContainsKey($selectedAction)) { $script:ActionItemMap[$selectedAction] } else { $null }
             $selectedPlaybook = if ($null -ne $matchedAction -and $matchedAction.ContainsKey('playbook')) { [string] $matchedAction.playbook } else { $selectedAction }
             $isMutating = $null -ne $matchedAction -and $matchedAction.ContainsKey('mutating') -and $matchedAction['mutating'] -eq $true
             if ($isMutating) {
-                $confirmBox = [System.Windows.Window]::new()
-                $confirmBox.Title = ""
-                $confirmBox.Width = 400
-                $confirmBox.SizeToContent = "Height"
-                $confirmBox.WindowStartupLocation = "CenterOwner"
-                $confirmBox.Owner = $window
-                $confirmBox.WindowStyle = "None"
-                $confirmBox.ResizeMode = "NoResize"
-                $confirmBox.Background = Get-NcsBrush -Color "#181b1f"
-                $confirmBox.BorderBrush = Get-NcsBrush -Color "#f06478"
-                $confirmBox.BorderThickness = [System.Windows.Thickness]::new(1)
-                $csp = [System.Windows.Controls.StackPanel]::new()
-                $csp.Margin = [System.Windows.Thickness]::new(16)
-                $cTitle = [System.Windows.Controls.TextBlock]::new()
-                $cTitle.Text = "Confirm Mutating Action"
-                $cTitle.Foreground = Get-NcsBrush -Color "#f06478"
-                $cTitle.FontSize = 14
-                $cTitle.FontWeight = "Bold"
-                $cTitle.Margin = [System.Windows.Thickness]::new(0,0,0,8)
-                $csp.Children.Add($cTitle) | Out-Null
-                $cLabel = [System.Windows.Controls.TextBlock]::new()
-                $cLabel.Text = "This action makes changes to remote hosts.`n`nPlaybook: $selectedPlaybook`n`nType 'yes' to confirm:"
-                $cLabel.Foreground = Get-NcsBrush -Color "#8e939c"
-                $cLabel.Margin = [System.Windows.Thickness]::new(0,0,0,6)
-                $cLabel.TextWrapping = "Wrap"
-                $cLabel.FontSize = 11
-                $csp.Children.Add($cLabel) | Out-Null
-                $cInput = [System.Windows.Controls.TextBox]::new()
-                $cInput.Background = Get-NcsBrush -Color "#1e2228"
-                $cInput.Foreground = Get-NcsBrush -Color "#d8dce2"
-                $cInput.BorderBrush = Get-NcsBrush -Color "#2c3038"
-                $cInput.CaretBrush = Get-NcsBrush -Color "#d8dce2"
-                $cInput.Padding = [System.Windows.Thickness]::new(8,5,8,5)
-                $cInput.FontFamily = [System.Windows.Media.FontFamily]::new("Consolas")
-                $csp.Children.Add($cInput) | Out-Null
-                $cBtnPanel = [System.Windows.Controls.StackPanel]::new()
-                $cBtnPanel.Orientation = "Horizontal"
-                $cBtnPanel.HorizontalAlignment = "Right"
-                $cBtnPanel.Margin = [System.Windows.Thickness]::new(0,10,0,0)
-                $cOkBtn = [System.Windows.Controls.Button]::new()
-                $cOkBtn.Content = "Run"
-                $cOkBtn.Background = Get-NcsBrush -Color "#1e2228"
-                $cOkBtn.Foreground = Get-NcsBrush -Color "#f06478"
-                $cOkBtn.BorderBrush = Get-NcsBrush -Color "#f06478"
-                $cOkBtn.Padding = [System.Windows.Thickness]::new(12,5,12,5)
-                $cOkBtn.Margin = [System.Windows.Thickness]::new(6,0,0,0)
-                $cOkBtn.IsDefault = $true
-                $cOkBtn.Add_Click({ $confirmBox.DialogResult = $true })
-                $cCancelBtn = [System.Windows.Controls.Button]::new()
-                $cCancelBtn.Content = "Cancel"
-                $cCancelBtn.Background = Get-NcsBrush -Color "#1e2228"
-                $cCancelBtn.Foreground = Get-NcsBrush -Color "#8e939c"
-                $cCancelBtn.BorderBrush = Get-NcsBrush -Color "#2c3038"
-                $cCancelBtn.Padding = [System.Windows.Thickness]::new(12,5,12,5)
-                $cCancelBtn.Add_Click({ $confirmBox.DialogResult = $false })
-                $cBtnPanel.Children.Add($cCancelBtn) | Out-Null
-                $cBtnPanel.Children.Add($cOkBtn) | Out-Null
-                $csp.Children.Add($cBtnPanel) | Out-Null
-                $confirmBox.Content = $csp
-                $cInput.Focus() | Out-Null
-
-                $confirmed = $confirmBox.ShowDialog()
-                if ($confirmed -ne $true -or $cInput.Text.Trim().ToLower() -ne "yes") {
+                $limitText = $controls.ActionLimitTextBox.Text.Trim()
+                $needsTyped = [string]::IsNullOrWhiteSpace($limitText)
+                $confirmed = Show-NcsMutatingConfirm -Owner $window -Playbook $selectedPlaybook -Limit $limitText -RequireTyped:$needsTyped
+                if (-not $confirmed) {
                     $controls.StatusTextBlock.Text = "Run cancelled — confirmation not provided."
                     return
                 }
@@ -3015,7 +3563,7 @@ function Show-NcsConsoleApp {
             $selectedLabel = Get-NcsTreeViewSelectionLabel -Controls $controls -TreeViewName "ActionTreeView"
             $state.LastActionLabel = if ($selectedLabel) { $selectedLabel } else { $selectedPlaybook }
             $controls.RunMetaText.Text = $state.LastActionLabel
-            $controls.StatusTextBlock.Text = "Starting remote command."
+            Set-NcsBusy -Controls $controls -Busy $true -Status "Starting remote command."
             Set-NcsRunningUiState -Controls $controls
             if ($state.Settings.AutoOpenConsoleOnRun -and $controls.ConsolePane.Visibility -eq "Collapsed") {
                 & $openConsole
@@ -3047,10 +3595,29 @@ function Show-NcsConsoleApp {
                 -OnCompleted {
                     param($runResult)
                     $durationTimer.Stop()
+                    Set-NcsBusy -Controls $controls -Busy $false
                     $state.LastRunResult = $runResult
                     $state.CurrentHandle = $null
                     Set-NcsIdleUiState -Controls $controls
                     Clear-NcsAdHocControls -Controls $controls
+                    try {
+                        $histEntry = [NcsRunHistoryEntry]::new()
+                        $histEntry.ActionId = $selectedAction
+                        $histEntry.Label = $state.LastActionLabel
+                        $histEntry.Playbook = $selectedPlaybook
+                        $histEntry.Limit = $request.Limit
+                        $histEntry.Tags = $request.Tags
+                        $histEntry.Options = $request.Options
+                        $histEntry.StartedAt = $runResult.StartedAt
+                        $histEntry.ExitCode = $runResult.ExitCode
+                        $histEntry.DurationSeconds = $runResult.Duration.TotalSeconds
+                        $histEntry.State = if ($runResult.WasCancelled) { "Canceled" } elseif ($runResult.Succeeded) { "Succeeded" } else { "Failed" }
+                        Add-NcsRunHistoryEntry -Settings $state.Settings -Entry $histEntry
+                        Update-NcsRecentList -Controls $controls -Settings $state.Settings
+                        Save-NcsConsoleSettings -Settings $state.Settings
+                    } catch {
+                        $null = $_ # Don't let history bookkeeping block run-complete UI updates
+                    }
                     $badgeState = if ($runResult.WasCancelled) { "Canceled" } elseif ($runResult.Succeeded) { "Succeeded" } else { "Failed" }
                     Set-NcsRunStateBadge -Controls $controls -State $badgeState
                     Add-NcsConsoleLine -Controls $controls -Line "--- exit: $($runResult.ExitCode) | $($runResult.OutputLines.Length) lines | $(Format-NcsDuration -Duration $runResult.Duration) ---"
@@ -3087,6 +3654,7 @@ function Show-NcsConsoleApp {
             $controls.CommandPreviewTextBox.Visibility = "Visible"
             $durationTimer.Start()
         } catch {
+            Set-NcsBusy -Controls $controls -Busy $false
             Set-NcsIdleUiState -Controls $controls
             Set-NcsRunStateBadge -Controls $controls -State "Blocked"
             $controls.StatusTextBlock.Text = $_.Exception.Message
@@ -3168,7 +3736,92 @@ function Show-NcsConsoleApp {
         }
     })
 
+    # PreviewKeyDown catches shortcuts even when focus is in a TextBox; bail out
+    # for unmodified character keys so plain typing still reaches the input.
+    $togglePanel = {
+        param($visControl, $openSb, $closeSb)
+        if ($visControl.Visibility -eq "Visible") { & $closeSb } else { & $openSb }
+    }
+    $window.Add_PreviewKeyDown({
+        param($_sender, $e)
+        $ctrl = [bool] ([System.Windows.Input.Keyboard]::Modifiers -band [System.Windows.Input.ModifierKeys]::Control)
+        $shift = [bool] ([System.Windows.Input.Keyboard]::Modifiers -band [System.Windows.Input.ModifierKeys]::Shift)
+        $alt   = [bool] ([System.Windows.Input.Keyboard]::Modifiers -band [System.Windows.Input.ModifierKeys]::Alt)
+        if ($alt) { return }
+        # Esc: clear search if it has text, else collapse the console drawer if open. Don't swallow Esc
+        # for nested dialogs (they handle it via IsCancel).
+        if ($e.Key -eq "Escape" -and -not $ctrl -and -not $shift) {
+            $focused = [System.Windows.Input.Keyboard]::FocusedElement
+            if ($focused -is [System.Windows.Controls.TextBoxBase] -or $focused -is [System.Windows.Controls.PasswordBox]) {
+                # Let the input handle Esc (search box clears itself).
+                return
+            }
+            if ($controls.ConsolePane.Visibility -eq "Visible") {
+                & $closeConsole
+                $e.Handled = $true
+                return
+            }
+            return
+        }
+        if ($ctrl -and -not $shift) {
+            switch ($e.Key) {
+                "R" {
+                    if ($controls.RunButton.IsEnabled -and $controls.RunButton.Visibility -eq "Visible") {
+                        $controls.RunButton.RaiseEvent([System.Windows.RoutedEventArgs]::new([System.Windows.Controls.Button]::ClickEvent))
+                    }
+                    $e.Handled = $true
+                }
+                "F" {
+                    & $openOperate
+                    $controls.ActionSearchBox.Focus() | Out-Null
+                    [void] $controls.ActionSearchBox.SelectAll()
+                    $e.Handled = $true
+                }
+                "L" {
+                    & $openConsole
+                    $controls.ConsoleTextBox.Focus() | Out-Null
+                    $e.Handled = $true
+                }
+                "D1" { & $togglePanel $controls.SettingsPanel  $openSettings  $closeSettings;  $e.Handled = $true }
+                "D2" { & $togglePanel $controls.OperateContent $openOperate   $closeOperate;   $e.Handled = $true }
+                "D3" { & $togglePanel $controls.ConsolePane    $openConsole   $closeConsole;   $e.Handled = $true }
+                "D4" { & $togglePanel $controls.ReportsPane    $openReports   $closeReports;   $e.Handled = $true }
+                "D5" { & $togglePanel $controls.SchedulesPane  $openSchedules $closeSchedules; $e.Handled = $true }
+            }
+            return
+        }
+        if (-not $ctrl -and -not $shift -and $e.Key -eq "F5") {
+            if ($controls.RefreshPlaybooksButton.IsEnabled) {
+                $controls.RefreshPlaybooksButton.RaiseEvent([System.Windows.RoutedEventArgs]::new([System.Windows.Controls.Button]::ClickEvent))
+                $e.Handled = $true
+            }
+        }
+    })
+
     $window.Add_Closing({
+        try {
+            if (-not [string]::IsNullOrWhiteSpace($script:NcsPreviousActionId)) {
+                Save-NcsActionMemory -Controls $controls -Settings $state.Settings -ActionId $script:NcsPreviousActionId
+            }
+            # closeX captures widths when the user toggles a panel shut; this loop
+            # is the safety net for any panel still open at window-close time.
+            $panelCaptures = @(
+                @{ Pane = $controls.SettingsPanel;  Column = $settingsColumn;  Setting = "SettingsColumnWidth" }
+                @{ Pane = $controls.OperateContent; Column = $operateColumn;   Setting = "OperateColumnWidth" }
+                @{ Pane = $controls.ReportsPane;    Column = $reportsColumn;   Setting = "ReportsColumnWidth" }
+                @{ Pane = $controls.SchedulesPane;  Column = $schedulesColumn; Setting = "SchedulesColumnWidth" }
+            )
+            foreach ($p in $panelCaptures) {
+                if ($p.Pane.Visibility -eq "Visible") {
+                    $state.Settings.($p.Setting) = Get-NcsStarRatio -Length $p.Column.Width -Default $state.Settings.($p.Setting)
+                }
+            }
+            $state.Settings.PlaybookTreeColumnWidth = Get-NcsStarRatio -Length $controls.PlaybookTreeColumn.Width -Default $state.Settings.PlaybookTreeColumnWidth
+            $state.Settings.PlaybookPropertiesColumnWidth = Get-NcsStarRatio -Length $controls.PlaybookPropertiesColumnDef.Width -Default $state.Settings.PlaybookPropertiesColumnWidth
+            Save-NcsConsoleSettings -Settings $state.Settings
+        } catch {
+            Write-Warning "Failed to persist settings on close: $($_.Exception.Message)"
+        }
         $durationTimer.Stop()
         if ($null -ne $state.AutoRefreshTimer) { $state.AutoRefreshTimer.Stop() }
         if ($state.CurrentHandle) {

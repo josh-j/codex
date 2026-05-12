@@ -36,6 +36,26 @@ class NcsScheduleEntry {
     [string] $LastResult = ""
 }
 
+class NcsActionMemory {
+    [string] $Limit = ""
+    [string] $Tags = ""
+    [hashtable] $Options = @{}
+    [datetime] $UpdatedAt = [datetime]::UtcNow
+}
+
+class NcsRunHistoryEntry {
+    [string] $ActionId = ""
+    [string] $Label = ""
+    [string] $Playbook = ""
+    [string] $Limit = ""
+    [string] $Tags = ""
+    [hashtable] $Options = @{}
+    [datetime] $StartedAt = [datetime]::UtcNow
+    [int] $ExitCode = -1
+    [string] $State = ""
+    [double] $DurationSeconds = 0
+}
+
 class NcsConsoleSettings {
     [string] $SshHost = ""
     [int] $SshPort = 22
@@ -53,13 +73,26 @@ class NcsConsoleSettings {
     [int]    $AutoRefreshIntervalSeconds = 5
     [bool]   $AutoOpenConsoleOnRun = $true
     [int]    $ConsoleDrawerHeight = 280
+    # Star ratios for each side panel — captured when the user drags the splitter
+    # so the layout sticks across sessions. 0 means "use default 1*".
+    [double] $SettingsColumnWidth = 0
+    [double] $OperateColumnWidth = 0
+    [double] $ReportsColumnWidth = 0
+    [double] $SchedulesColumnWidth = 0
+    # Inner playbook split: tree column ratio against the properties column.
+    [double] $PlaybookTreeColumnWidth = 0
+    [double] $PlaybookPropertiesColumnWidth = 0
     [string] $StrictHostKeyChecking = "accept-new"
     [int] $ConnectTimeoutSeconds = 10
     [int] $ServerAliveIntervalSeconds = 15
     [int] $ServerAliveCountMax = 3
     [string] $LogDirectory = ""
-    [int] $SettingsVersion = 3
+    [int] $SettingsVersion = 4
     [string] $LastAction = ""
+    # Per-action memory: maps action_id -> NcsActionMemory. Capped at 50 entries, LRU on save.
+    [hashtable] $ActionState = @{}
+    # Last 20 runs, oldest first. Drives the Recent listview.
+    [System.Collections.Generic.List[NcsRunHistoryEntry]] $RunHistory = [System.Collections.Generic.List[NcsRunHistoryEntry]]::new()
 
     NcsConsoleSettings() {
     }
@@ -288,7 +321,9 @@ def fallback_options(play):
         dv = yaml_str(v)
         if "{{" in dv:
             continue
-        opts.append({"name": k, "label": auto_label(k), "default": dv})
+        # auto_detected lets the console render these under a separate
+        # "Auto-detected" expander so curated # >>> options stay prominent.
+        opts.append({"name": k, "label": auto_label(k), "default": dv, "auto_detected": True})
     return opts
 
 def get_node(tree, segments):
