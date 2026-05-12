@@ -1,5 +1,5 @@
 ---
-# internal/ise/playbooks/ise_one_offs.yml
+# internal/ise/playbooks/one_offs.yml
 # Read-only Cisco ISE operator lookups intended for ncs-console profiles.
 #
 # >>>

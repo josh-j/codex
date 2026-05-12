@@ -6,7 +6,7 @@ import functools
 import json
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from jinja2 import Undefined
@@ -15,6 +15,48 @@ from jinja2.nativetypes import NativeEnvironment
 from ncs_reporter.primitives import SECONDS_PER_DAY
 
 logger = logging.getLogger(__name__)
+
+
+# Java Date.toString() / ctime with an explicit TZ abbreviation. ISE's
+# OpenAPI returns cert expirationDate in the appliance's local zone, so
+# we can't assume "UTC" — and Python's strptime ``%Z`` only matches the
+# host's local zone plus UTC/GMT, which silently fails on any other
+# abbreviation. We pre-parse the line and resolve the abbreviation
+# against a known table instead.
+_CTIME_WITH_TZ_RE = re.compile(
+    r"^[A-Za-z]{3}\s+([A-Za-z]{3})\s+(\d{1,2})\s+(\d{2}):(\d{2}):(\d{2})\s+([A-Za-z]{2,5})\s+(\d{4})$"
+)
+
+_MONTH_ABBR = {m: i + 1 for i, m in enumerate(
+    ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+)}
+
+# Common appliance timezone abbreviations as fixed UTC offsets, in minutes.
+# DST-bearing abbreviations (PST/PDT, EST/EDT, ...) are listed explicitly so
+# we don't have to consult a tzdata DB at runtime; the appliance picks one or
+# the other when it formats the string.
+_TZ_OFFSETS_MIN: dict[str, int] = {
+    "UTC": 0, "GMT": 0, "Z": 0, "UT": 0,
+    "EST": -300, "EDT": -240,
+    "CST": -360, "CDT": -300,
+    "MST": -420, "MDT": -360,
+    "PST": -480, "PDT": -420,
+    "AKST": -540, "AKDT": -480,
+    "HST": -600, "HAST": -600, "HADT": -540,
+    "AST": -240, "ADT": -180,
+    "NST": -210, "NDT": -150,
+    "BST": 60, "WET": 0, "WEST": 60,
+    "CET": 60, "CEST": 120,
+    "EET": 120, "EEST": 180,
+    "MSK": 180,
+    "IST": 330,  # India Standard Time — collides w/ Irish/Israel, but India
+                 # is what ISE's docs use; revisit if a non-India deployment hits this.
+    "JST": 540, "KST": 540,
+    "AEST": 600, "AEDT": 660,
+    "ACST": 570, "ACDT": 630,
+    "AWST": 480,
+    "NZST": 720, "NZDT": 780,
+}
 
 
 def _parse_iso(ts: str) -> datetime | None:
@@ -28,6 +70,10 @@ def _parse_iso(ts: str) -> datetime | None:
     timestamps. Without those formats every cert parses as None, age_days
     returns 0, and expires_in_days collapses to 0 (every cert reports
     "expiring today").
+
+    When every format fails and *ts* is non-empty, log a warning so the
+    next ISE collect surfaces the actual offending string instead of
+    silently producing zeroed Days Left columns.
     """
     try:
         return datetime.fromisoformat(ts).astimezone(timezone.utc)
@@ -38,17 +84,40 @@ def _parse_iso(ts: str) -> datetime | None:
         "%Y-%m-%dT%H:%M:%S.%f",
         "%Y-%m-%dT%H:%M:%S",
         "%Y-%m-%d",
-        # ISE OpenAPI / MnT (system + trusted cert expirationDate,
-        # backup startDate). Order matters: try the UTC-literal variant
-        # before the generic %Z one so the literal "UTC" matches.
-        "%a %b %d %H:%M:%S UTC %Y",
-        "%a %b %d %H:%M:%S %Z %Y",
+        # No-zone fallback for Java Date.toString() variants. We treat
+        # the result as UTC because there's nothing better; explicit-zone
+        # variants are handled by the regex+table below so they produce
+        # the correct offset rather than guessing.
         "%a %b %d %H:%M:%S %Y",
     ):
         try:
             return datetime.strptime(stripped, fmt).replace(tzinfo=timezone.utc)
         except ValueError:
             continue
+
+    # Java Date.toString() with an explicit TZ abbreviation — what ISE
+    # emits for cert expirationDate and backup startDate. Pre-parse with
+    # regex so we don't depend on strptime's locale-bound %Z (which only
+    # recognises the host's local zone + UTC/GMT, and on a hit replaces
+    # the offset with whatever .replace(tzinfo=…) sets later — silently
+    # converting "12:00 CET" into "12:00 UTC").
+    m = _CTIME_WITH_TZ_RE.match(ts.strip())
+    if m:
+        mon, day, hh, mm, ss, tz, year = m.groups()
+        month = _MONTH_ABBR.get(mon)
+        offset = _TZ_OFFSETS_MIN.get(tz.upper())
+        if month is not None and offset is not None:
+            try:
+                dt = datetime(
+                    int(year), month, int(day), int(hh), int(mm), int(ss),
+                    tzinfo=timezone(timedelta(minutes=offset)),
+                )
+                return dt.astimezone(timezone.utc)
+            except ValueError:
+                pass
+
+    if ts and ts != "None":
+        logger.warning("_parse_iso could not parse timestamp %r", ts)
     return None
 
 

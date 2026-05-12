@@ -1,9 +1,20 @@
 # Changelog
 
+## 0.3.0
+
+- Renamed `playbooks/ise_collect.yml` → `playbooks/collect.yml` and
+  `playbooks/ise_one_offs.yml` → `playbooks/one_offs.yml`. The previous
+  layout shipped both `collect.yml` (a one-line import shim used by
+  `site_collect_only.yml` to dispatch `internal.ise.collect`) and
+  `ise_collect.yml` (the real play), which surfaced as two separate
+  entries in the ncs-console playbook tree. ISE has no sub-platform,
+  so the prefix wasn't disambiguating anything; the canonical FQCN
+  is now `internal.ise.collect` / `internal.ise.one_offs`.
+
 ## 0.1.0
 
 - Initial `internal.ise` collection scaffold.
-- Added read-only `ise_collect` playbook and role.
+- Added read-only `collect.yml` playbook and role.
 - Added ncs-console one-off profiles for endpoint lookup, endpoint risk,
   switch lookup, NAD port endpoint reporting, user auth history, failed
   auth summaries, and endpoint CoA.

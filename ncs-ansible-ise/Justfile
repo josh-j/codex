@@ -7,5 +7,5 @@ import? '../ncs-ansible/shared.just'
 # Collection-specific recipes below. See shared.just for
 # lint / yamllint / build / clean.
 
-test:       (_test_check "playbooks/ise_collect.yml")
-test-apply: (_test_apply "playbooks/ise_collect.yml")
+test:       (_test_check "playbooks/collect.yml")
+test-apply: (_test_apply "playbooks/collect.yml")

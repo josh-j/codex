@@ -29,8 +29,8 @@ API access goes through `ansible.builtin.uri`.
 Playbooks ship under `playbooks/` and are invoked by FQCN:
 
 ```bash
-ansible-playbook -i inventory/production internal.ise.ise_collect
-ansible-playbook -i inventory/production internal.ise.ise_one_offs -e ncs_operation=endpoint_lookup -e ise_lookup=00:11:22:33:44:55
+ansible-playbook -i inventory/production internal.ise.collect
+ansible-playbook -i inventory/production internal.ise.one_offs -e ncs_operation=endpoint_lookup -e ise_lookup=00:11:22:33:44:55
 ```
 
 Required inventory variables for each ISE deployment anchor:
@@ -55,7 +55,7 @@ ncs-ansible-ise/
 ├── galaxy.yml            # namespace/name/version + dependencies
 ├── meta/runtime.yml      # required ansible-core version
 ├── roles/ise/            # ISE role hitting ERS/OpenAPI/MnT via uri
-├── playbooks/            # flat filename convention: ise_collect.yml
+├── playbooks/            # flat filename convention: collect.yml, one_offs.yml
 ├── tests/                # standalone lab inventory skeleton
 ├── plugins/              # optional future plugins
 └── CHANGELOG.md
@@ -74,11 +74,11 @@ patch status, policy and TACACS inventory, identity source inventory,
 session/authentication visibility, endpoint default-policy markers,
 high repeat counters, randomized MAC detection, TrustSec object counts,
 API failure alerts, and inventory/detail tables for the raw
-`ise_collect` payload.
+`collect` payload.
 
 ## Console One-Offs
 
-`ise_one_offs.yml` ships ncs-console metadata profiles for common
+`one_offs.yml` ships ncs-console metadata profiles for common
 operator lookups:
 
 - Endpoint lookup by MAC, IP, hostname, or username

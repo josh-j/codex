@@ -77,7 +77,7 @@ ansible-playbook -i inventory/production network_device.yml
 ## NCS Collection Playbook
 
 ```bash
-ansible-playbook -i inventory/production internal.ise.ise_collect
+ansible-playbook -i inventory/production internal.ise.collect
 ```
 
 The NCS playbook emits `raw_ise.yaml` through `internal.core.emit`.

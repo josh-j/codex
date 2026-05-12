@@ -1,7 +1,7 @@
 # internal.ise - tests
 
 Standalone test harness for the `internal.ise` collection. Runs
-`ise_collect` against a lab Cisco ISE deployment without the
+`collect.yml` against a lab Cisco ISE deployment without the
 `ncs-ansible/` orchestrator.
 
 ## Quick Start
@@ -18,10 +18,10 @@ just test
 # or:
 ansible-playbook -i tests/inventory \
   --vault-password-file tests/.vault_pass \
-  --check playbooks/ise_collect.yml
+  --check playbooks/collect.yml
 ```
 
-`just test` runs `ise_collect.yml` in `--check` mode. `just test-apply`
+`just test` runs `collect.yml` in `--check` mode. `just test-apply`
 drops `--check`; the playbook remains read-only.
 
 ## Inventory Shape

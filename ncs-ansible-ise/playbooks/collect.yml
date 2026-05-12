@@ -1,4 +1,30 @@
 ---
-# Compatibility entry point for generic collection runners.
+# internal/ise/playbooks/collect.yml
+# Gather read-only Cisco ISE inventory and health-oriented API data.
+#
+# Usage:
+#   ansible-playbook internal.ise.collect -i inventory/production
 
-- import_playbook: ise_collect.yml
+- name: "Cisco ISE Collect"
+  hosts: "{{ ise_target_hosts | default('ise_servers') }}"
+  gather_facts: false
+  ignore_unreachable: true
+  # The role makes HTTPS calls from the controller, not SSH/sudo on the
+  # ISE node. Disable connection + become so inherited inventory defaults
+  # don't trigger sudo prompts for uri tasks.
+  connection: local
+  become: false
+  tags: ["ise", "audit"]
+  module_defaults:
+    ansible.builtin.uri:
+      url_username: "{{ ise_username }}"
+      url_password: "{{ ise_password }}"
+      force_basic_auth: true
+      validate_certs: "{{ ise_verify }}"
+      return_content: true
+      status_code: [200]
+      timeout: "{{ ise_single_request_timeout }}"
+  roles:
+    - role: internal.ise.ise
+      vars:
+        ncs_action: collect
