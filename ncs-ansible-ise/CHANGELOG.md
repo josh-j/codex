@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.2
+
+- Temporary diagnostic step on `nad_policy_hits` to surface the
+  upstream MnT request state, raw XML head, parsed row count, and
+  filter survival count. nad_policy_hits is still showing empty
+  breakdowns after the 0.5.1 parser fix; this dumps enough state to
+  tell whether the breakage is the HTTP call, the parser, or the NAD
+  filter. Will be removed once we've localized the issue.
+
 ## 0.5.1
 
 - Fix `_parse_mnt_xml_rows` to walk 3-level MnT XML

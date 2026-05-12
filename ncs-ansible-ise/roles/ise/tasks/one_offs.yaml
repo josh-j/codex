@@ -483,6 +483,33 @@
   changed_when: false
   when: _ise_one_off_operation == 'nad_endpoint_inventory'
 
+# Diagnostic dump for nad_policy_hits. While the breakdowns are
+# returning empty rows, this surfaces the upstream request status, the
+# raw XML head, how many rows came out of the parser, and how many
+# survive the NAD filter — enough to tell whether the breakage is the
+# HTTP call, the parser, or the NAD filter without another round-trip.
+- name: "ISE One-Off | NAD policy hits diagnostics"
+  ansible.builtin.debug:
+    msg:
+      ise_mnt_hostname: "{{ ise_mnt_hostname }}"
+      nad_query: "{{ _ise_nad_query }}"
+      lookback_seconds: "{{ _ise_one_off_seconds }}"
+      max_records: "{{ _ise_one_off_records }}"
+      auth_status_request:
+        status: "{{ _ise_one_off_auth_status_raw.status | default('-') }}"
+        msg: "{{ _ise_one_off_auth_status_raw.msg | default('') }}"
+        failed: "{{ _ise_one_off_auth_status_raw.failed | default(false) }}"
+        content_length: "{{ (_ise_one_off_auth_status_raw.content | default('')) | length }}"
+        content_head: "{{ (_ise_one_off_auth_status_raw.content | default(''))[:600] }}"
+      parsed_row_count: "{{ _ise_one_off_auth_rows | default([]) | length }}"
+      parsed_first_row_keys: "{{ (_ise_one_off_auth_rows | default([]))[0].keys() | list if (_ise_one_off_auth_rows | default([])) else [] }}"
+      parsed_first_row_nad_name: "{{ (_ise_one_off_auth_rows | default([]))[0].nad_name | default('') if (_ise_one_off_auth_rows | default([])) else '' }}"
+      parsed_first_row_authn_rule: "{{ (_ise_one_off_auth_rows | default([]))[0].authentication_rule | default('') if (_ise_one_off_auth_rows | default([])) else '' }}"
+      parsed_first_row_authz_rule: "{{ (_ise_one_off_auth_rows | default([]))[0].authorization_rule | default('') if (_ise_one_off_auth_rows | default([])) else '' }}"
+      after_nad_filter: "{{ _ise_one_off_auth_rows | default([]) | internal.ise.ise_nad_rows(_ise_nad_query) | length }}"
+      matched_nads: "{{ _ise_one_off_network_device_rows | default([]) | length }}"
+  when: _ise_one_off_operation == 'nad_policy_hits'
+
 - name: "ISE One-Off | Build NAD policy hits report"
   ansible.builtin.set_fact:
     _ise_one_off_report:
