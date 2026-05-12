@@ -503,12 +503,43 @@ def ise_auth_rows(value: Any) -> list[dict[str, Any]]:
                         "authz_profile",
                     ],
                 ),
+                # MnT carries authc and authz rules in distinct elements
+                # (authentication_rule / authorization_rule) but the report's
+                # legacy "matched_rule" column conflated them. Expose all
+                # three: authentication_rule, authorization_rule, policy_set,
+                # plus a compatibility-preserving matched_rule.
+                "authentication_rule": _first(
+                    item,
+                    [
+                        "authentication_rule",
+                        "authenticationRule",
+                        "authenticationPolicyMatchedRule",
+                    ],
+                ),
+                "authorization_rule": _first(
+                    item,
+                    [
+                        "authorization_rule",
+                        "authorizationRule",
+                        "authorizationPolicyMatchedRule",
+                    ],
+                ),
+                "policy_set": _first(
+                    item,
+                    [
+                        "policy_set_name",
+                        "policySetName",
+                        "policyset",
+                    ],
+                ),
                 "matched_rule": _first(
                     item,
                     [
                         "authorization_rule",
                         "authorizationRule",
                         "authorizationPolicyMatchedRule",
+                        "authentication_rule",
+                        "authenticationRule",
                         "authenticationPolicyMatchedRule",
                         "matchedRule",
                         "auth_rule",
@@ -727,6 +758,137 @@ def ise_policy_hit_summary(rows: Any) -> list[dict[str, Any]]:
             "sample_port": samples.get(key, {}).get("port", ""),
         }
         for key, count in counter.most_common(50)
+    ]
+
+
+def _group_count(
+    rows: Any,
+    key_field: str,
+    column_name: str,
+    sample_fields: tuple[str, ...] = (
+        "username",
+        "mac",
+        "authentication_method",
+        "authentication_protocol",
+    ),
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    """Generic group-and-count helper for the nad_policy_hits breakdowns.
+
+    Groups *rows* by ``key_field``, tracks the latest timestamp and a sample
+    of the requested *sample_fields*. Returns ``[{column_name: key,
+    hit_count: int, last_seen: str, sample_*: str}, ...]`` sorted by count.
+    """
+    counter: Counter[str] = Counter()
+    last_seen_map: dict[str, str] = {}
+    samples: dict[str, dict[str, Any]] = {}
+    for row in _as_list(rows):
+        if not isinstance(row, dict):
+            continue
+        key = str(row.get(key_field) or "").strip()
+        if not key:
+            continue
+        counter[key] += 1
+        ts = str(row.get("timestamp") or "")
+        if ts and ts > last_seen_map.get(key, ""):
+            last_seen_map[key] = ts
+            samples[key] = row
+        elif key not in samples:
+            samples[key] = row
+    out: list[dict[str, Any]] = []
+    for key, count in counter.most_common(limit):
+        entry: dict[str, Any] = {column_name: key, "hit_count": count, "last_seen": last_seen_map.get(key, "")}
+        for f in sample_fields:
+            entry[f"sample_{f}"] = str(samples.get(key, {}).get(f) or "")
+        out.append(entry)
+    return out
+
+
+def ise_authc_rule_summary(rows: Any) -> list[dict[str, Any]]:
+    """Group auth events by C(authentication_rule)."""
+    return _group_count(
+        rows,
+        key_field="authentication_rule",
+        column_name="authentication_rule",
+        sample_fields=(
+            "policy_set",
+            "authentication_method",
+            "authentication_protocol",
+            "username",
+            "mac",
+        ),
+    )
+
+
+def ise_authz_rule_summary(rows: Any) -> list[dict[str, Any]]:
+    """Group auth events by C(authorization_rule)."""
+    return _group_count(
+        rows,
+        key_field="authorization_rule",
+        column_name="authorization_rule",
+        sample_fields=(
+            "policy_set",
+            "authorization_profile",
+            "username",
+            "mac",
+            "port",
+        ),
+    )
+
+
+def ise_authz_profile_summary(rows: Any) -> list[dict[str, Any]]:
+    """Group auth events by C(authorization_profile) (selected_azn_profiles)."""
+    return _group_count(
+        rows,
+        key_field="authorization_profile",
+        column_name="authorization_profile",
+        sample_fields=(
+            "authorization_rule",
+            "policy_set",
+            "username",
+            "mac",
+        ),
+    )
+
+
+def ise_policy_set_summary(rows: Any) -> list[dict[str, Any]]:
+    """Group auth events by C(policy_set)."""
+    return _group_count(
+        rows,
+        key_field="policy_set",
+        column_name="policy_set",
+        sample_fields=(
+            "authentication_rule",
+            "authorization_rule",
+            "authorization_profile",
+        ),
+    )
+
+
+def ise_authc_method_summary(rows: Any) -> list[dict[str, Any]]:
+    """Group auth events by C(authentication_method) + C(authentication_protocol)."""
+    counter: Counter[tuple[str, str]] = Counter()
+    last_seen_map: dict[tuple[str, str], str] = {}
+    for row in _as_list(rows):
+        if not isinstance(row, dict):
+            continue
+        method = str(row.get("authentication_method") or "").strip()
+        protocol = str(row.get("authentication_protocol") or "").strip()
+        if not method and not protocol:
+            continue
+        key = (method or "(unspecified)", protocol or "(unspecified)")
+        counter[key] += 1
+        ts = str(row.get("timestamp") or "")
+        if ts and ts > last_seen_map.get(key, ""):
+            last_seen_map[key] = ts
+    return [
+        {
+            "authentication_method": method,
+            "authentication_protocol": protocol,
+            "hit_count": count,
+            "last_seen": last_seen_map.get((method, protocol), ""),
+        }
+        for (method, protocol), count in counter.most_common(50)
     ]
 
 
@@ -959,6 +1121,11 @@ class FilterModule:
             "ise_port_failure_summary": ise_port_failure_summary,
             "ise_policy_hit_rows": ise_policy_hit_rows,
             "ise_policy_hit_summary": ise_policy_hit_summary,
+            "ise_authc_rule_summary": ise_authc_rule_summary,
+            "ise_authz_rule_summary": ise_authz_rule_summary,
+            "ise_authz_profile_summary": ise_authz_profile_summary,
+            "ise_policy_set_summary": ise_policy_set_summary,
+            "ise_authc_method_summary": ise_authc_method_summary,
             "ise_timeline_rows": ise_timeline_rows,
             "ise_port_history_rows": ise_port_history_rows,
             "ise_limit_rows": ise_limit_rows,

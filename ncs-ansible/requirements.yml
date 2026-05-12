@@ -26,7 +26,7 @@ collections:
     type: file
   - name: "./collections/vendor/internal-aci-0.3.5.tar.gz"
     type: file
-  - name: "./collections/vendor/internal-ise-0.4.0.tar.gz"
+  - name: "./collections/vendor/internal-ise-0.5.0.tar.gz"
     type: file
 
   # --- Mode B: sibling working directories --------------------------------

@@ -94,7 +94,7 @@
   register: _ise_one_off_nad_inventory
   changed_when: false
   failed_when: false
-  when: _ise_one_off_operation in ['switch_lookup', 'port_endpoint_report', 'nad_troubleshooting', 'nad_port_history', 'nad_endpoint_inventory', 'nad_missing_protocols']
+  when: _ise_one_off_operation in ['switch_lookup', 'port_endpoint_report', 'nad_troubleshooting', 'nad_port_history', 'nad_endpoint_inventory', 'nad_missing_protocols', 'nad_policy_hits']
 
 # MnT XML endpoints — the cisco.ise SDK's mnt_*_info modules call methods
 # that don't exist on the installed SDK version. Operator's exporter
@@ -144,6 +144,7 @@
       'nad_troubleshooting',
       'nad_port_history',
       'nad_endpoint_inventory',
+      'nad_policy_hits',
       'policy_object_detail'
     ]
 
@@ -481,6 +482,36 @@
       recent_endpoint_auths: "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_limit_rows(250) }}"
   changed_when: false
   when: _ise_one_off_operation == 'nad_endpoint_inventory'
+
+- name: "ISE One-Off | Build NAD policy hits report"
+  ansible.builtin.set_fact:
+    _ise_one_off_report:
+      title: "NAD Policy Hits"
+      nad_query: "{{ _ise_nad_query }}"
+      lookback_seconds: "{{ _ise_one_off_seconds }}"
+      max_records: "{{ _ise_one_off_records }}"
+      collected_at: "{{ _ise_one_off_collected_at }}"
+      ise_hostname: "{{ ise_hostname }}"
+      matching_network_devices: "{{ _ise_one_off_network_device_rows | internal.ise.ise_limit_rows(25) }}"
+      # AuthStatus rows carry network_device_name, so the substring NAD
+      # query works here — same path nad_troubleshooting uses for recent
+      # auths. Everything below operates on that narrowed slice.
+      authentication_rules:
+        "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_authc_rule_summary }}"
+      authorization_rules:
+        "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_authz_rule_summary }}"
+      authorization_profiles:
+        "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_authz_profile_summary }}"
+      policy_sets:
+        "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_policy_set_summary }}"
+      authentication_methods:
+        "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_authc_method_summary }}"
+      failure_breakdown:
+        "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_failure_summary }}"
+      recent_events:
+        "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_limit_rows(150) }}"
+  changed_when: false
+  when: _ise_one_off_operation == 'nad_policy_hits'
 
 - name: "ISE One-Off | Shape NAD protocol audit rows"
   ansible.builtin.set_fact:

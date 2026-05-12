@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.0
+
+- New `nad_policy_hits` one-off: for a given NAD, breaks down recent
+  authentication events by authentication rule, authorization rule,
+  authorization profile, policy set, and authentication
+  method/protocol. Sources are the existing AuthStatus payload narrowed
+  to the NAD via `network_device_name` substring match — no extra MnT
+  calls. Defaults to 24h lookback / 2000 records (raise for busy NADs).
+- `ise_auth_rows` now exposes `authentication_rule`, `authorization_rule`,
+  and `policy_set` as separate fields (previously conflated under
+  `matched_rule`, which is preserved for back-compat).
+- Five new aggregation filters: `ise_authc_rule_summary`,
+  `ise_authz_rule_summary`, `ise_authz_profile_summary`,
+  `ise_policy_set_summary`, `ise_authc_method_summary`. Each groups by
+  the named field, counts hits, tracks last_seen, and carries a few
+  sample fields the report uses for context.
+
 ## 0.4.0
 
 - Fixed "Endpoints on NAD" and other NAD-scoped one-offs that were

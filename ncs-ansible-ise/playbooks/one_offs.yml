@@ -116,6 +116,14 @@
 # options:
 #   ise_nad_query: "text | Optional NAD filter | Narrow the audit to NADs whose name/IP/description matches this substring (leave blank for all)"
 # ---
+# label: NAD Policy Hits
+# operation: nad_policy_hits
+# is_read_only: true
+# options:
+#   ise_nad_query: "text | NAD Name or IP | Switch/NAD to break down authc/authz hits for"
+#   ise_seconds: "text = 86400 | Lookback Seconds | Authentication lookback window"
+#   ise_records: "text = 2000 | Max Records | Maximum recent authentication rows requested from MnT (raise for busy NADs)"
+# ---
 # label: Policy Object Detail
 # operation: policy_object_detail
 # is_read_only: true
