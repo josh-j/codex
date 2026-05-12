@@ -19,20 +19,17 @@
     _ise_one_off_reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}/one_offs/ise"
   changed_when: false
 
-# Wrong MnT host returns plausible-looking-but-stubbed data — every
-# <activeSession> comes back with only <user_name> populated. The per-
-# deployment ops notes call this out as the single highest-cost
-# debugging mistake; if ise_mnt_hostname falls through to ise_hostname
-# (the default in a single-node setup), make that visible so a split-
-# persona deployment doesn't silently look broken.
+# MnT calls against a non-MnT node return HTTP 200 + valid XML with
+# every <activeSession> stubbed to just <user_name>. If the operator
+# left ise_mnt_hostname defaulted to ise_pan_hostname on a split-persona
+# deployment, surface that before they chase phantom-empty reports.
 - name: "ISE One-Off | MnT host sanity check"
   ansible.builtin.debug:
     msg: >-
       ise_mnt_hostname={{ ise_mnt_hostname }} matches ise_pan_hostname=
-      {{ ise_pan_hostname }}. For single-node deployments this is correct;
-      for split-persona deployments the MnT calls will return stub data
-      until ise_mnt_hostname is set to the actual MnT node. (See the
-      "wrong MnT host returns plausible stub data" entry in docs.)
+      {{ ise_pan_hostname }}. Correct for single-node deployments; on
+      split-persona deployments set ise_mnt_hostname to the MnT node or
+      session-bearing reports will be empty.
   when: ise_mnt_hostname == ise_pan_hostname
 
 - name: "ISE One-Off | Show request"
@@ -137,17 +134,11 @@
       'nad_endpoint_inventory'
     ]
 
-# AuthStatus/MACAddress/0/<sec>/<rec>/All used to live here as the source
-# for every op's "recent_authentications" view. Per the per-deployment
-# ops notes that prompted the 0.6.0 pivot, that whole branch of the MnT
-# XML surface (AuthStatus, AuthDetail, AuthList, IPAddress, ...) is
-# either confirmed-404 or 500-on-call on ISE 3.3. The only useful MnT
-# session paths still in service are Session/ActiveList (enumerate) and
-# Session/MACAddress/<mac> (per-session detail). All consumers either
-# moved to the Session/MACAddress fan-out (nad_policy_hits,
-# nad_endpoint_inventory) or now show an empty section pending an op-
-# specific rewrite. _ise_one_off_auth_rows is set to [] in the Shape
-# task so existing references render empty instead of erroring.
+# Why no AuthStatus/* poll here: on ISE 3.3 the entire AuthStatus /
+# AuthDetail / AuthList / IPAddress branch of the MnT XML surface is
+# confirmed-404 or 500-on-call. The only working session paths are
+# Session/ActiveList and Session/MACAddress/<mac>, both already fanned
+# out by ise_session_details_info.
 
 # nad_endpoint_inventory needs full per-session detail (port, vlan, auth
 # protocol, authz profile, matched rule, ...) for the "Active Endpoints"
@@ -284,11 +275,9 @@
         | internal.ise.ise_result_rows
         | internal.ise.ise_auth_rows
       }}
-    # AuthStatus/* MnT paths are dead/unreliable on ISE 3.3 (see the
-    # deleted "Get recent authentication status" task block above), so
-    # _ise_one_off_auth_rows is permanently empty here. Reports that
-    # still reference it render an empty section until they're ported to
-    # an ActiveList → Session/MACAddress data path.
+    # AuthStatus/* MnT paths are dead on ISE 3.3. Reports still referencing
+    # _ise_one_off_auth_rows render an empty section until ported to a
+    # Session/MACAddress data path.
     _ise_one_off_auth_rows: []
     _ise_one_off_session_by_mac_rows: >-
       {{
@@ -498,16 +487,9 @@
       # nas_ip_address before fanning out.
       sessions_examined: "{{ (_ise_one_off_session_rows | default([])) | length }}"
       matching_network_devices: "{{ _ise_one_off_network_device_rows | internal.ise.ise_limit_rows(25) }}"
-      # _ise_one_off_session_rows here is already the per-MAC
-      # Session/MACAddress detail narrowed to the matched NAD's IP(s)
-      # by ise_session_details_info. Every aggregator below skips
-      # accounting-Stop records (no passed/failed) so the breakdowns
-      # only reflect actual auth decisions. authentication_rule /
-      # authorization_rule / policy_set are intentionally absent — MnT
-      # XML on 3.3 carries the *outcome* (selected_azn_profiles,
-      # auth_method, identity_group, endpoint_policy, cts_security_group)
-      # but not the matched rule names; the Prometheus exporter against
-      # the same deployment aggregates on the same set of fields.
+      # No rule-name breakdowns: MnT XML on 3.3 carries the outcome
+      # (selected_azn_profiles, auth_method, identity_group, etc.) but
+      # not the matched authc/authz rule names per session.
       status_breakdown:
         "{{ _ise_one_off_session_rows | internal.ise.ise_status_breakdown }}"
       authorization_profiles:

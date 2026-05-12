@@ -829,11 +829,9 @@ def ise_policy_hit_summary(rows: Any) -> list[dict[str, Any]]:
     ]
 
 
-# Accounting-Stop records on Session/MACAddress responses carry no auth
-# signal — they have ``acct_status_type=Stop`` but no ``passed``/``failed``
-# (see the per-deployment ops notes that prompted the 0.6.0 rewrite). The
-# breakdown filters use this to ignore them rather than letting them sink
-# into the (empty-keyed) "unknown" bucket.
+# Accounting-Stop records on Session/MACAddress carry no auth signal
+# (acct_status_type=Stop, no passed/failed). The breakdown filters skip
+# them so they don't sink into an empty-keyed "unknown" bucket.
 def _is_auth_record(row: dict[str, Any]) -> bool:
     return bool(row.get("status") in ("passed", "failed"))
 
