@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.1
+
+- Fix `_parse_mnt_xml_rows` to walk 3-level MnT XML
+  (`<authStatusOutputList><authStatusList><authStatusElements>...`).
+  The old parser stopped at the per-MAC `<authStatusList>` wrapper and
+  produced rows like `{"authStatusElements": <whitespace>}`, which
+  blanked every field downstream — including all five `nad_policy_hits`
+  breakdown tables and every `recent_authentications`/`recent_endpoint_auths`
+  table on the other NAD-scoped one-offs. Parser now BFS-walks until it
+  finds nodes whose direct children are all leaves and emits each as a
+  row, so flat-row, 2-level, and 3-level shapes all work.
+
 ## 0.5.0
 
 - New `nad_policy_hits` one-off: for a given NAD, breaks down recent

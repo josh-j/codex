@@ -114,11 +114,23 @@ def _first_ip_address(nd: dict[str, Any]) -> str:
 def _parse_mnt_xml_rows(content: str) -> list[dict[str, Any]]:
     """Parse an ISE MnT XML response into a list of row dicts.
 
-    Handles wrapper shapes like <activeList><activeSession>row</activeSession>...
-    where the wrapper's children are row elements whose children are leaf
-    fields. Falls back to treating root itself as a single row when there
-    is no wrapping level.
+    Handles all four shapes MnT actually emits:
+
+      * Flat row (e.g. /Session/MACAddress/<mac>, /Version) — root is the
+        single row with leaf children directly.
+      * 2-level wrapper (e.g. /Session/ActiveList, /FailureReasons) — root's
+        children are rows whose children are leaves.
+      * 3-level wrapper (e.g. /AuthStatus/...) — root has per-MAC
+        ``<authStatusList key="...">`` wrappers, each of which contains one
+        or more ``<authStatusElements>`` rows. Walking only two levels
+        produced rows like ``{"authStatusElements": <whitespace>}`` — every
+        downstream field lookup then resolved to empty, which is why the
+        nad_policy_hits authc/authz/profile/policy_set summaries showed up
+        empty even when the NAD had auth events.
+      * Mixed / deeper nesting — the BFS below finds any node whose direct
+        children are all leaves and emits it as a row.
     """
+    from collections import deque
     from xml.etree import ElementTree as ET
 
     try:
@@ -130,16 +142,24 @@ def _parse_mnt_xml_rows(content: str) -> list[dict[str, Any]]:
     if not children:
         return []
 
-    # If any direct child of root is a leaf, treat root as a single flat
-    # row. Wrapper shapes (activeList, failureReasons, authStatusOutputList,
-    # etc.) have only container children with descendants; row shapes
-    # (sessionParameters from /Session/MACAddress/<mac>, Version) have at
-    # least one leaf child. The earlier "first child has children" check
-    # misclassified <sessionParameters> when its first child happened to
-    # be a nested radius_attributes block.
+    # Flat-row case: root is a single row with leaf children.
     if any(not list(child) for child in children):
-        return [{c.tag: c.text for c in root if not list(c)}]
-    return [{c.tag: c.text for c in row} for row in children]
+        return [{c.tag: (c.text or "") for c in root if not list(c)}]
+
+    # Wrapper / nested-wrapper case: walk breadth-first until we find
+    # nodes whose direct children are all leaves; emit each as a row.
+    rows: list[dict[str, Any]] = []
+    queue: deque[Any] = deque(children)
+    while queue:
+        node = queue.popleft()
+        node_children = list(node)
+        if not node_children:
+            continue
+        if all(not list(child) for child in node_children):
+            rows.append({c.tag: (c.text or "") for c in node})
+        else:
+            queue.extend(node_children)
+    return rows
 
 
 def _parse_mnt_xml_root_leaves(content: str) -> dict[str, Any]:
