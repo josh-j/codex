@@ -14,43 +14,6 @@ MAC_RANDOM_RE = re.compile(r"^[0-9a-f][26ae][:-]")
 _MAC_CHARS_RE = re.compile(r"[^0-9A-Fa-f]")
 
 
-def ise_nad_protocol_status(loop_results: Any) -> list[dict[str, Any]]:
-    """Extract RADIUS/TACACS configuration status from a loop of
-    ``/ers/config/networkdevice/<id>`` detail fetches.
-
-    Each Ansible loop result wraps the response as ``.json.NetworkDevice``.
-    A device with no ``authenticationSettings`` key is missing RADIUS; a
-    device with no ``tacacsSettings`` is missing TACACS. Caller narrows
-    via ``ise_search_rows`` and ``ise_limit_rows`` (project convention).
-    """
-    rows: list[dict[str, Any]] = []
-    for result in loop_results or []:
-        if not isinstance(result, dict):
-            continue
-        nd = ((result.get("json") or {}).get("NetworkDevice")) or {}
-        if not nd:
-            continue
-        has_radius = "authenticationSettings" in nd
-        has_tacacs = "tacacsSettings" in nd
-        missing = []
-        if not has_radius:
-            missing.append("RADIUS")
-        if not has_tacacs:
-            missing.append("TACACS")
-
-        rows.append({
-            "name": _first(nd, ["name"], ""),
-            "ip_address": _first_ip_address(nd),
-            "description": _first(nd, ["description"], ""),
-            "has_radius": has_radius,
-            "has_tacacs": has_tacacs,
-            "missing_protocols": ", ".join(missing),
-            "profile_name": _first(nd, ["profileName"], ""),
-            "model_name": _first(nd, ["modelName"], ""),
-        })
-    return rows
-
-
 def ise_normalize_mac(value: Any) -> str:
     """Return a MAC in ISE's canonical form (uppercase, colon-separated).
 
@@ -951,7 +914,6 @@ class FilterModule:
             "ise_network_device_rows": ise_network_device_rows,
             "ise_auth_rows": ise_auth_rows,
             "ise_coa_candidates": ise_coa_candidates,
-            "ise_nad_protocol_status": ise_nad_protocol_status,
             "ise_normalize_mac": ise_normalize_mac,
             "ise_mnt_version": ise_mnt_version,
             "ise_mnt_active_count": ise_mnt_active_count,

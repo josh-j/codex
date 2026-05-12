@@ -83,69 +83,27 @@
   register: _ise_one_off_network_devices_raw
   changed_when: false
   failed_when: false
-  when: _ise_one_off_operation in ['switch_lookup', 'port_endpoint_report', 'nad_troubleshooting', 'nad_port_history', 'nad_endpoint_inventory', 'nad_missing_protocols']
+  when: _ise_one_off_operation in ['switch_lookup', 'port_endpoint_report', 'nad_troubleshooting', 'nad_port_history', 'nad_endpoint_inventory']
 
-# Audit operations need the whole fleet, not just page 1. Other NAD-scoped
-# ops (switch_lookup, nad_*) work fine off page 1 because they filter to a
-# single switch downstream, so this only kicks in for nad_missing_protocols.
-- name: "ISE One-Off | Get network devices (pages 2..N)"
-  ansible.builtin.uri:
-    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/networkdevice?size=100&page={{ item }}"
-    method: GET
-    headers:
-      Accept: application/json
-  become: false
-  register: _ise_one_off_network_devices_pages
+# nad_missing_protocols needs the full NAD population *and* each device's
+# authenticationSettings/tacacsSettings, which only live on the per-NAD
+# detail body. The previous async/poll:0 + async_status fan-out had to
+# walk one harvest loop per NAD with a 2s retry tick, which dominated
+# wall-clock on large fleets. ise_network_devices_info collapses the
+# list + paginate + detail fan-out into one Ansible task using
+# concurrent.futures so we pay loop overhead exactly once.
+- name: "ISE One-Off | Audit NAD protocol coverage"
+  internal.ise.ise_network_devices_info:
+    hostname: "{{ ise_pan_hostname }}"
+    port: "{{ ise_ers_port }}"
+    username: "{{ ise_username }}"
+    password: "{{ ise_password }}"
+    validate_certs: "{{ ise_verify }}"
+    request_timeout: "{{ ise_single_request_timeout }}"
+    max_workers: "{{ ise_nad_audit_workers | default(16) | int }}"
+  register: _ise_one_off_nad_audit
   changed_when: false
   failed_when: false
-  loop: >-
-    {{ range(2, [((_ise_one_off_network_devices_raw.json.SearchResult.total | default(0) | int) + 99) // 100, 100] | min + 1) | list }}
-  loop_control:
-    label: "page {{ item }}"
-  when:
-    - _ise_one_off_operation == 'nad_missing_protocols'
-    - (_ise_one_off_network_devices_raw.json.SearchResult.total | default(0) | int) > 100
-
-- name: "ISE One-Off | Start NAD detail fetches (background)"
-  # ERS summary list returns {id, name, link} per device. To see whether
-  # each NAD has authenticationSettings (RADIUS) and/or tacacsSettings,
-  # we fetch detail for each id. async + poll: 0 fires each request as a
-  # background job so we don't pay RTT × N wall-clock; the harvest task
-  # below joins on the jobs.
-  ansible.builtin.uri:
-    url: "https://{{ ise_pan_hostname }}:{{ ise_ers_port }}/ers/config/networkdevice/{{ item }}"
-    method: GET
-    headers:
-      Accept: application/json
-  become: false
-  async: "{{ ise_single_request_timeout }}"
-  poll: 0
-  register: _ise_one_off_nad_detail_jobs
-  changed_when: false
-  failed_when: false
-  loop: >-
-    {{ ((_ise_one_off_network_devices_raw.json.SearchResult.resources | default([]))
-        + ((_ise_one_off_network_devices_pages.results | default([]))
-           | map(attribute='json.SearchResult.resources')
-           | select | list | flatten))
-       | map(attribute='id') | select | list }}
-  loop_control:
-    label: "{{ item }}"
-  when: _ise_one_off_operation == 'nad_missing_protocols'
-
-- name: "ISE One-Off | Harvest NAD detail fetches"
-  ansible.builtin.async_status:
-    jid: "{{ item.ansible_job_id }}"
-  become: false
-  register: _ise_one_off_nad_details
-  changed_when: false
-  failed_when: false
-  until: _ise_one_off_nad_details.finished
-  retries: 30
-  delay: 2
-  loop: "{{ _ise_one_off_nad_detail_jobs.results | default([]) }}"
-  loop_control:
-    label: "{{ item.item | default('') }}"
   when: _ise_one_off_operation == 'nad_missing_protocols'
 
 # MnT XML endpoints — the cisco.ise SDK's mnt_*_info modules call methods
@@ -496,8 +454,7 @@
 - name: "ISE One-Off | Shape NAD protocol audit rows"
   ansible.builtin.set_fact:
     _ise_one_off_nad_protocol_rows: >-
-      {{ _ise_one_off_nad_details.results | default([])
-         | internal.ise.ise_nad_protocol_status
+      {{ (_ise_one_off_nad_audit.rows | default([]))
          | internal.ise.ise_search_rows(_ise_nad_query) }}
   changed_when: false
   when: _ise_one_off_operation == 'nad_missing_protocols'

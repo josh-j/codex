@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1
+
+- Replaced the `nad_missing_protocols` async + async_status fan-out with a
+  new `internal.ise.ise_network_devices_info` module that does ERS list
+  pagination and per-NAD detail fetches in a `ThreadPoolExecutor`. Removes
+  the per-iteration Ansible loop overhead and the `delay: 2` polling that
+  dominated wall-clock on large NAD fleets. The unused
+  `ise_nad_protocol_status` filter and its registration are gone.
+
 ## 0.3.0
 
 - Renamed `playbooks/ise_collect.yml` → `playbooks/collect.yml` and
