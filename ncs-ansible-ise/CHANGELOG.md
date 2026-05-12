@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.6.0
+
+- **Pivot `nad_policy_hits` and the rest of the role off MnT
+  AuthStatus/MACAddress.** Operator notes from a live ISE 3.3
+  deployment confirmed everything outside `Session/ActiveList` and
+  `Session/MACAddress/<mac>` is either confirmed-404 or 500-on-call,
+  including the AuthStatus path the previous nad_policy_hits + every
+  op's `recent_authentications` view was reading from. The role no
+  longer polls that endpoint; `_ise_one_off_auth_rows` is permanently
+  `[]` in the Shape task and reports that still reference it render
+  empty until rewritten to a Session/MACAddress source.
+- `nad_policy_hits` now consumes the per-MAC `Session/MACAddress`
+  detail already fanned out by `ise_session_details_info` (extended
+  to fire for this op). Report sections rewritten to match what MnT
+  XML actually carries on 3.3 — `authorization_profiles` (with
+  comma-split for chained-rule profiles), `authentication_methods`,
+  `identity_groups`, `endpoint_policies`, `cts_security_groups`,
+  `status_breakdown`, `failure_breakdown`, `recent_events`. The
+  removed `authentication_rules` / `authorization_rules` /
+  `policy_sets` sections were always going to be empty — MnT doesn't
+  expose rule names per-session on 3.3.
+- `ise_failure_summary` extracts the leading 5-digit code from
+  `failure_reason` (e.g. `"11512 EAP-NAK received..."` → `code=11512`,
+  `reason="EAP-NAK received..."`) so the same failure mode bucketed
+  consistently across slightly-different description strings.
+- New `_is_auth_record` guard in the breakdown helpers skips
+  accounting-Stop records (no `passed`/`failed` field, no policy
+  signal) so they don't sink into an empty-key bucket.
+- New `ise_normalize_location` filter strips `All Locations#` prefix
+  from session-side location strings to match the NAD-inventory
+  output format; applied inside `ise_auth_rows`.
+- New "MnT host sanity check" task fires when `ise_mnt_hostname`
+  resolves to the same value as `ise_pan_hostname`. Single-node
+  deployments will see it and ignore; split-persona deployments that
+  forgot to set `ise_mnt_hostname` will see it and fix the wrong-node
+  problem before chasing phantom-empty reports.
+- Removed the 0.5.2 diagnostic task; the breakdown rewrite makes it
+  obsolete.
+
 ## 0.5.2
 
 - Temporary diagnostic step on `nad_policy_hits` to surface the

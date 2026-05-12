@@ -19,6 +19,22 @@
     _ise_one_off_reports_root: "{{ ncs_config.report_directory | default('/srv/samba/reports') }}/one_offs/ise"
   changed_when: false
 
+# Wrong MnT host returns plausible-looking-but-stubbed data — every
+# <activeSession> comes back with only <user_name> populated. The per-
+# deployment ops notes call this out as the single highest-cost
+# debugging mistake; if ise_mnt_hostname falls through to ise_hostname
+# (the default in a single-node setup), make that visible so a split-
+# persona deployment doesn't silently look broken.
+- name: "ISE One-Off | MnT host sanity check"
+  ansible.builtin.debug:
+    msg: >-
+      ise_mnt_hostname={{ ise_mnt_hostname }} matches ise_pan_hostname=
+      {{ ise_pan_hostname }}. For single-node deployments this is correct;
+      for split-persona deployments the MnT calls will return stub data
+      until ise_mnt_hostname is set to the actual MnT node. (See the
+      "wrong MnT host returns plausible stub data" entry in docs.)
+  when: ise_mnt_hostname == ise_pan_hostname
+
 - name: "ISE One-Off | Show request"
   ansible.builtin.debug:
     msg:
@@ -121,32 +137,17 @@
       'nad_endpoint_inventory'
     ]
 
-- name: "ISE One-Off | Get recent authentication status"
-  ansible.builtin.uri:
-    url: >-
-      https://{{ ise_mnt_hostname }}/admin/API/mnt/AuthStatus/MACAddress/0/{{ _ise_one_off_seconds }}/{{ _ise_one_off_records }}/All
-    method: GET
-    headers:
-      Accept: application/xml
-  become: false
-  register: _ise_one_off_auth_status_raw
-  changed_when: false
-  failed_when: false
-  when: >-
-    _ise_one_off_operation in [
-      'endpoint_lookup',
-      'switch_lookup',
-      'port_endpoint_report',
-      'user_auth_history',
-      'failed_auth_summary',
-      'endpoint_timeline',
-      'policy_hit_explorer',
-      'nad_troubleshooting',
-      'nad_port_history',
-      'nad_endpoint_inventory',
-      'nad_policy_hits',
-      'policy_object_detail'
-    ]
+# AuthStatus/MACAddress/0/<sec>/<rec>/All used to live here as the source
+# for every op's "recent_authentications" view. Per the per-deployment
+# ops notes that prompted the 0.6.0 pivot, that whole branch of the MnT
+# XML surface (AuthStatus, AuthDetail, AuthList, IPAddress, ...) is
+# either confirmed-404 or 500-on-call on ISE 3.3. The only useful MnT
+# session paths still in service are Session/ActiveList (enumerate) and
+# Session/MACAddress/<mac> (per-session detail). All consumers either
+# moved to the Session/MACAddress fan-out (nad_policy_hits,
+# nad_endpoint_inventory) or now show an empty section pending an op-
+# specific rewrite. _ise_one_off_auth_rows is set to [] in the Shape
+# task so existing references render empty instead of erroring.
 
 # nad_endpoint_inventory needs full per-session detail (port, vlan, auth
 # protocol, authz profile, matched rule, ...) for the "Active Endpoints"
@@ -169,7 +170,7 @@
   register: _ise_one_off_session_details
   changed_when: false
   failed_when: false
-  when: _ise_one_off_operation == 'nad_endpoint_inventory'
+  when: _ise_one_off_operation in ['nad_endpoint_inventory', 'nad_policy_hits']
 
 - name: "ISE One-Off | Get session by MAC"
   ansible.builtin.uri:
@@ -270,23 +271,25 @@
     # missing_protocols/profile_name/model_name); no extra normalization
     # needed.
     _ise_one_off_network_device_rows: "{{ _ise_one_off_nad_inventory.rows | default([]) }}"
-    # nad_endpoint_inventory consumes the full per-MAC session detail from
-    # ise_session_details_info; the other session-bearing ops keep using
-    # the condensed ActiveList payload.
+    # nad_endpoint_inventory and nad_policy_hits consume the full per-MAC
+    # session detail from ise_session_details_info; the other session-bearing
+    # ops keep using the condensed ActiveList payload.
     _ise_one_off_session_rows: >-
       {{
         (
           (_ise_one_off_session_details.sessions | default([]))
-          if _ise_one_off_operation == 'nad_endpoint_inventory'
+          if _ise_one_off_operation in ['nad_endpoint_inventory', 'nad_policy_hits']
           else (_ise_one_off_active_sessions_raw | default({}))
         )
         | internal.ise.ise_result_rows
         | internal.ise.ise_auth_rows
       }}
-    _ise_one_off_auth_rows: >-
-      {{
-        _ise_one_off_auth_status_raw | default({}) | internal.ise.ise_result_rows | internal.ise.ise_auth_rows
-      }}
+    # AuthStatus/* MnT paths are dead/unreliable on ISE 3.3 (see the
+    # deleted "Get recent authentication status" task block above), so
+    # _ise_one_off_auth_rows is permanently empty here. Reports that
+    # still reference it render an empty section until they're ported to
+    # an ActiveList → Session/MACAddress data path.
+    _ise_one_off_auth_rows: []
     _ise_one_off_session_by_mac_rows: >-
       {{
         _ise_one_off_session_by_mac_raw | default({}) | internal.ise.ise_result_rows | internal.ise.ise_auth_rows
@@ -483,60 +486,44 @@
   changed_when: false
   when: _ise_one_off_operation == 'nad_endpoint_inventory'
 
-# Diagnostic dump for nad_policy_hits. While the breakdowns are
-# returning empty rows, this surfaces the upstream request status, the
-# raw XML head, how many rows came out of the parser, and how many
-# survive the NAD filter — enough to tell whether the breakage is the
-# HTTP call, the parser, or the NAD filter without another round-trip.
-- name: "ISE One-Off | NAD policy hits diagnostics"
-  ansible.builtin.debug:
-    msg:
-      ise_mnt_hostname: "{{ ise_mnt_hostname }}"
-      nad_query: "{{ _ise_nad_query }}"
-      lookback_seconds: "{{ _ise_one_off_seconds }}"
-      max_records: "{{ _ise_one_off_records }}"
-      auth_status_request:
-        status: "{{ _ise_one_off_auth_status_raw.status | default('-') }}"
-        msg: "{{ _ise_one_off_auth_status_raw.msg | default('') }}"
-        failed: "{{ _ise_one_off_auth_status_raw.failed | default(false) }}"
-        content_length: "{{ (_ise_one_off_auth_status_raw.content | default('')) | length }}"
-        content_head: "{{ (_ise_one_off_auth_status_raw.content | default(''))[:600] }}"
-      parsed_row_count: "{{ _ise_one_off_auth_rows | default([]) | length }}"
-      parsed_first_row_keys: "{{ (_ise_one_off_auth_rows | default([]))[0].keys() | list if (_ise_one_off_auth_rows | default([])) else [] }}"
-      parsed_first_row_nad_name: "{{ (_ise_one_off_auth_rows | default([]))[0].nad_name | default('') if (_ise_one_off_auth_rows | default([])) else '' }}"
-      parsed_first_row_authn_rule: "{{ (_ise_one_off_auth_rows | default([]))[0].authentication_rule | default('') if (_ise_one_off_auth_rows | default([])) else '' }}"
-      parsed_first_row_authz_rule: "{{ (_ise_one_off_auth_rows | default([]))[0].authorization_rule | default('') if (_ise_one_off_auth_rows | default([])) else '' }}"
-      after_nad_filter: "{{ _ise_one_off_auth_rows | default([]) | internal.ise.ise_nad_rows(_ise_nad_query) | length }}"
-      matched_nads: "{{ _ise_one_off_network_device_rows | default([]) | length }}"
-  when: _ise_one_off_operation == 'nad_policy_hits'
-
 - name: "ISE One-Off | Build NAD policy hits report"
   ansible.builtin.set_fact:
     _ise_one_off_report:
       title: "NAD Policy Hits"
       nad_query: "{{ _ise_nad_query }}"
-      lookback_seconds: "{{ _ise_one_off_seconds }}"
-      max_records: "{{ _ise_one_off_records }}"
       collected_at: "{{ _ise_one_off_collected_at }}"
       ise_hostname: "{{ ise_hostname }}"
+      # Session-detail count from the Session/MACAddress fan-out; the
+      # cap is mostly informational since the module narrows by
+      # nas_ip_address before fanning out.
+      sessions_examined: "{{ (_ise_one_off_session_rows | default([])) | length }}"
       matching_network_devices: "{{ _ise_one_off_network_device_rows | internal.ise.ise_limit_rows(25) }}"
-      # AuthStatus rows carry network_device_name, so the substring NAD
-      # query works here — same path nad_troubleshooting uses for recent
-      # auths. Everything below operates on that narrowed slice.
-      authentication_rules:
-        "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_authc_rule_summary }}"
-      authorization_rules:
-        "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_authz_rule_summary }}"
+      # _ise_one_off_session_rows here is already the per-MAC
+      # Session/MACAddress detail narrowed to the matched NAD's IP(s)
+      # by ise_session_details_info. Every aggregator below skips
+      # accounting-Stop records (no passed/failed) so the breakdowns
+      # only reflect actual auth decisions. authentication_rule /
+      # authorization_rule / policy_set are intentionally absent — MnT
+      # XML on 3.3 carries the *outcome* (selected_azn_profiles,
+      # auth_method, identity_group, endpoint_policy, cts_security_group)
+      # but not the matched rule names; the Prometheus exporter against
+      # the same deployment aggregates on the same set of fields.
+      status_breakdown:
+        "{{ _ise_one_off_session_rows | internal.ise.ise_status_breakdown }}"
       authorization_profiles:
-        "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_authz_profile_summary }}"
-      policy_sets:
-        "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_policy_set_summary }}"
+        "{{ _ise_one_off_session_rows | internal.ise.ise_authz_profile_summary }}"
       authentication_methods:
-        "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_authc_method_summary }}"
+        "{{ _ise_one_off_session_rows | internal.ise.ise_authc_method_summary }}"
+      identity_groups:
+        "{{ _ise_one_off_session_rows | internal.ise.ise_identity_group_summary }}"
+      endpoint_policies:
+        "{{ _ise_one_off_session_rows | internal.ise.ise_endpoint_policy_summary }}"
+      cts_security_groups:
+        "{{ _ise_one_off_session_rows | internal.ise.ise_cts_sgt_summary }}"
       failure_breakdown:
-        "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_failure_summary }}"
+        "{{ _ise_one_off_session_rows | internal.ise.ise_failure_summary }}"
       recent_events:
-        "{{ _ise_one_off_auth_rows | internal.ise.ise_nad_rows(_ise_nad_query) | internal.ise.ise_limit_rows(150) }}"
+        "{{ _ise_one_off_session_rows | internal.ise.ise_limit_rows(150) }}"
   changed_when: false
   when: _ise_one_off_operation == 'nad_policy_hits'
 

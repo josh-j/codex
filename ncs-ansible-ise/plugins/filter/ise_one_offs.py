@@ -101,6 +101,30 @@ def _contains(row: dict[str, Any], query: str, fields: list[str] | None = None) 
     return needle in haystack
 
 
+def _normalize_location(loc: Any) -> str:
+    """Strip ``All Locations#`` from the front of the per-session location
+    hierarchy so it matches the format the NAD inventory emits.
+
+    MnT Session/MACAddress returns ``location`` as
+    ``All Locations#Germany#Ramstein AB#Bldg 313``. The NAD-inventory
+    parser already strips ``Location#All Locations#`` from
+    ``NetworkDeviceGroupList`` entries; keeping the session-side parity
+    means PromQL / Jinja joins between the two work without per-call
+    normalization.
+    """
+    if loc in (None, ""):
+        return ""
+    parts = str(loc).split("#")
+    if parts and parts[0] == "All Locations" and len(parts) > 1:
+        return "#".join(parts[1:])
+    return str(loc)
+
+
+def ise_normalize_location(loc: Any) -> str:
+    """Public alias for :func:`_normalize_location`."""
+    return _normalize_location(loc)
+
+
 def _first_ip_address(nd: dict[str, Any]) -> str:
     """Return the first IP from a NetworkDevice's NetworkDeviceIPList,
     tolerating ERS / OpenAPI casing variants for the wrapping key and the
@@ -499,6 +523,10 @@ def ise_auth_rows(value: Any) -> list[dict[str, Any]]:
                         "user_identity_group",
                     ],
                 ),
+                "endpoint_policy": _first(item, ["endpoint_policy", "endpointPolicy"]),
+                "cts_security_group": _first(item, ["cts_security_group", "ctsSecurityGroup", "sgt"]),
+                "location": _normalize_location(_first(item, ["location", "Location"], "")),
+                "device_type": _first(item, ["device_type", "deviceType"]),
                 "audit_session_id": _first(
                     item,
                     [
@@ -726,11 +754,31 @@ def ise_failure_rows(rows: Any) -> list[dict[str, Any]]:
 
 
 def ise_failure_summary(rows: Any) -> list[dict[str, Any]]:
-    counter = Counter()
+    """Group failed-auth rows by leading 5-digit reason code.
+
+    MnT C(failure_reason) is formatted ``"<code> <human description>"``
+    (e.g. ``"11512 Extracted EAP-NAK"``); the human-readable suffix can
+    vary slightly between auths so we key on the numeric code and keep
+    the first observed description as ``reason``. That matches what the
+    Prometheus exporter buckets sessions by.
+    """
+    counter: Counter[str] = Counter()
+    description_for: dict[str, str] = {}
     for row in ise_failure_rows(rows):
-        reason = str(row.get("failure_reason") or row.get("status") or "unknown").strip()
-        counter[reason or "unknown"] += 1
-    return [{"reason": reason, "count": count} for reason, count in counter.most_common(20)]
+        raw = str(row.get("failure_reason") or row.get("status") or "").strip()
+        if not raw:
+            continue
+        head, sep, rest = raw.partition(" ")
+        if head.isdigit():
+            code, description = head, rest.strip() or raw
+        else:
+            code, description = raw, raw
+        counter[code] += 1
+        description_for.setdefault(code, description)
+    return [
+        {"code": code, "reason": description_for.get(code, ""), "count": count}
+        for code, count in counter.most_common(20)
+    ]
 
 
 def ise_port_failure_summary(rows: Any) -> list[dict[str, Any]]:
@@ -781,6 +829,15 @@ def ise_policy_hit_summary(rows: Any) -> list[dict[str, Any]]:
     ]
 
 
+# Accounting-Stop records on Session/MACAddress responses carry no auth
+# signal — they have ``acct_status_type=Stop`` but no ``passed``/``failed``
+# (see the per-deployment ops notes that prompted the 0.6.0 rewrite). The
+# breakdown filters use this to ignore them rather than letting them sink
+# into the (empty-keyed) "unknown" bucket.
+def _is_auth_record(row: dict[str, Any]) -> bool:
+    return bool(row.get("status") in ("passed", "failed"))
+
+
 def _group_count(
     rows: Any,
     key_field: str,
@@ -792,12 +849,22 @@ def _group_count(
         "authentication_protocol",
     ),
     limit: int = 50,
+    split_on: str | None = None,
+    auth_only: bool = True,
 ) -> list[dict[str, Any]]:
-    """Generic group-and-count helper for the nad_policy_hits breakdowns.
+    """Generic group-and-count helper used by the nad_policy_hits breakdowns.
 
-    Groups *rows* by ``key_field``, tracks the latest timestamp and a sample
-    of the requested *sample_fields*. Returns ``[{column_name: key,
-    hit_count: int, last_seen: str, sample_*: str}, ...]`` sorted by count.
+    Groups *rows* by ``key_field``, tracks the latest timestamp and a
+    sample of the requested *sample_fields*. Returns
+    ``[{column_name: key, hit_count: int, last_seen: str, sample_*: str},
+    ...]`` sorted by count.
+
+    *split_on* turns a comma-separated MnT field (notably
+    ``selected_azn_profiles``, which can be ``"Aviano_VoIP,Last_Method"``)
+    into one row per profile.
+
+    *auth_only* drops accounting-Stop records (``acct_status_type=Stop``
+    sessions), which carry no policy signal.
     """
     counter: Counter[str] = Counter()
     last_seen_map: dict[str, str] = {}
@@ -805,16 +872,22 @@ def _group_count(
     for row in _as_list(rows):
         if not isinstance(row, dict):
             continue
-        key = str(row.get(key_field) or "").strip()
-        if not key:
+        if auth_only and not _is_auth_record(row):
             continue
-        counter[key] += 1
+        raw = row.get(key_field)
+        if split_on and raw:
+            keys = [k.strip() for k in str(raw).split(split_on) if k.strip()]
+        else:
+            v = str(raw or "").strip()
+            keys = [v] if v else []
         ts = str(row.get("timestamp") or "")
-        if ts and ts > last_seen_map.get(key, ""):
-            last_seen_map[key] = ts
-            samples[key] = row
-        elif key not in samples:
-            samples[key] = row
+        for key in keys:
+            counter[key] += 1
+            if ts and ts > last_seen_map.get(key, ""):
+                last_seen_map[key] = ts
+                samples[key] = row
+            elif key not in samples:
+                samples[key] = row
     out: list[dict[str, Any]] = []
     for key, count in counter.most_common(limit):
         entry: dict[str, Any] = {column_name: key, "hit_count": count, "last_seen": last_seen_map.get(key, "")}
@@ -824,73 +897,77 @@ def _group_count(
     return out
 
 
-def ise_authc_rule_summary(rows: Any) -> list[dict[str, Any]]:
-    """Group auth events by C(authentication_rule)."""
+def ise_status_breakdown(rows: Any) -> list[dict[str, Any]]:
+    """Count by RADIUS auth ``status`` (passed/failed). Skips accounting-Stops."""
     return _group_count(
         rows,
-        key_field="authentication_rule",
-        column_name="authentication_rule",
-        sample_fields=(
-            "policy_set",
-            "authentication_method",
-            "authentication_protocol",
-            "username",
-            "mac",
-        ),
-    )
-
-
-def ise_authz_rule_summary(rows: Any) -> list[dict[str, Any]]:
-    """Group auth events by C(authorization_rule)."""
-    return _group_count(
-        rows,
-        key_field="authorization_rule",
-        column_name="authorization_rule",
-        sample_fields=(
-            "policy_set",
-            "authorization_profile",
-            "username",
-            "mac",
-            "port",
-        ),
+        key_field="status",
+        column_name="status",
+        sample_fields=("authentication_method", "username", "mac", "nad_name"),
+        limit=10,
     )
 
 
 def ise_authz_profile_summary(rows: Any) -> list[dict[str, Any]]:
-    """Group auth events by C(authorization_profile) (selected_azn_profiles)."""
+    """Count by ``authorization_profile`` (``selected_azn_profiles``).
+
+    ISE can return multiple profiles in one CSV string when chained authz
+    rules apply; we split so each profile gets its own row.
+    """
     return _group_count(
         rows,
         key_field="authorization_profile",
         column_name="authorization_profile",
         sample_fields=(
-            "authorization_rule",
-            "policy_set",
+            "identity_group",
+            "endpoint_policy",
+            "authentication_method",
             "username",
             "mac",
         ),
+        split_on=",",
     )
 
 
-def ise_policy_set_summary(rows: Any) -> list[dict[str, Any]]:
-    """Group auth events by C(policy_set)."""
+def ise_identity_group_summary(rows: Any) -> list[dict[str, Any]]:
+    """Count by ``identity_group`` (e.g. ``Windows11-Workstation``,
+    ``Cisco-IP-Phone``)."""
     return _group_count(
         rows,
-        key_field="policy_set",
-        column_name="policy_set",
-        sample_fields=(
-            "authentication_rule",
-            "authorization_rule",
-            "authorization_profile",
-        ),
+        key_field="identity_group",
+        column_name="identity_group",
+        sample_fields=("endpoint_policy", "authorization_profile", "mac"),
+    )
+
+
+def ise_endpoint_policy_summary(rows: Any) -> list[dict[str, Any]]:
+    """Count by ``endpoint_policy`` (profiler match)."""
+    return _group_count(
+        rows,
+        key_field="endpoint_policy",
+        column_name="endpoint_policy",
+        sample_fields=("identity_group", "authorization_profile", "mac"),
+    )
+
+
+def ise_cts_sgt_summary(rows: Any) -> list[dict[str, Any]]:
+    """Count by ``cts_security_group`` (Cisco TrustSec SGT name)."""
+    return _group_count(
+        rows,
+        key_field="cts_security_group",
+        column_name="cts_security_group",
+        sample_fields=("authorization_profile", "identity_group", "mac"),
     )
 
 
 def ise_authc_method_summary(rows: Any) -> list[dict[str, Any]]:
-    """Group auth events by C(authentication_method) + C(authentication_protocol)."""
+    """Group auth records by C((authentication_method, authentication_protocol))."""
     counter: Counter[tuple[str, str]] = Counter()
     last_seen_map: dict[tuple[str, str], str] = {}
     for row in _as_list(rows):
         if not isinstance(row, dict):
+            continue
+        if not _is_auth_record(row):
             continue
         method = str(row.get("authentication_method") or "").strip()
         protocol = str(row.get("authentication_protocol") or "").strip()
@@ -1141,11 +1218,13 @@ class FilterModule:
             "ise_port_failure_summary": ise_port_failure_summary,
             "ise_policy_hit_rows": ise_policy_hit_rows,
             "ise_policy_hit_summary": ise_policy_hit_summary,
-            "ise_authc_rule_summary": ise_authc_rule_summary,
-            "ise_authz_rule_summary": ise_authz_rule_summary,
             "ise_authz_profile_summary": ise_authz_profile_summary,
-            "ise_policy_set_summary": ise_policy_set_summary,
             "ise_authc_method_summary": ise_authc_method_summary,
+            "ise_status_breakdown": ise_status_breakdown,
+            "ise_identity_group_summary": ise_identity_group_summary,
+            "ise_endpoint_policy_summary": ise_endpoint_policy_summary,
+            "ise_cts_sgt_summary": ise_cts_sgt_summary,
+            "ise_normalize_location": ise_normalize_location,
             "ise_timeline_rows": ise_timeline_rows,
             "ise_port_history_rows": ise_port_history_rows,
             "ise_limit_rows": ise_limit_rows,
