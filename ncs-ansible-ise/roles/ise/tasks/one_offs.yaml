@@ -487,15 +487,24 @@
       # nas_ip_address before fanning out.
       sessions_examined: "{{ (_ise_one_off_session_rows | default([])) | length }}"
       matching_network_devices: "{{ _ise_one_off_network_device_rows | internal.ise.ise_limit_rows(25) }}"
-      # No rule-name breakdowns: MnT XML on 3.3 carries the outcome
-      # (selected_azn_profiles, auth_method, identity_group, etc.) but
-      # not the matched authc/authz rule names per session.
+      # Rule-name + policy-set breakdowns come out of the other_attr_string
+      # blob inside Session/MACAddress responses — ise_auth_rows explodes
+      # the :!:Key=Val:!: pairs (ISEPolicySetName,
+      # AuthorizationPolicyMatchedRule, IdentityPolicyMatchedRule,
+      # IdentitySelectionMatchedRule) so the three *_rule / policy_set
+      # summaries below are populated on ISE 3.3.
       status_breakdown:
         "{{ _ise_one_off_session_rows | internal.ise.ise_status_breakdown }}"
       authorization_profiles:
         "{{ _ise_one_off_session_rows | internal.ise.ise_authz_profile_summary }}"
       authentication_methods:
         "{{ _ise_one_off_session_rows | internal.ise.ise_authc_method_summary }}"
+      authentication_rules:
+        "{{ _ise_one_off_session_rows | internal.ise.ise_authentication_rule_summary }}"
+      authorization_rules:
+        "{{ _ise_one_off_session_rows | internal.ise.ise_authorization_rule_summary }}"
+      policy_sets:
+        "{{ _ise_one_off_session_rows | internal.ise.ise_policy_set_summary }}"
       identity_groups:
         "{{ _ise_one_off_session_rows | internal.ise.ise_identity_group_summary }}"
       endpoint_policies:

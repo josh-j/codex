@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.6.1
+
+- `ise_auth_rows` now explodes the `other_attr_string` blob that MnT
+  Session/MACAddress responses carry — a `:!:Key=Val:!:Key=Val:!:`
+  string holding `ISEPolicySetName`,
+  `AuthorizationPolicyMatchedRule`, `IdentityPolicyMatchedRule`, and
+  `IdentitySelectionMatchedRule` among other fields. 0.6.0 removed
+  the rule-name sections on the assumption MnT didn't expose them
+  per-session on 3.3; the data was reachable all along, just nested
+  inside that one field.
+- `_first` fallback chains for `authentication_rule` /
+  `authorization_rule` / `policy_set` / `matched_rule` extended to
+  recognize the exploded key names.
+- New filters `ise_parse_other_attr_string` (raw access),
+  `ise_authentication_rule_summary`,
+  `ise_authorization_rule_summary`, `ise_policy_set_summary` —
+  same `_group_count` shape as the existing breakdowns.
+- `nad_policy_hits` report restores `authentication_rules`,
+  `authorization_rules`, and `policy_sets` sections, all driven
+  from the now-populated row fields.
+
 ## 0.6.0
 
 - **Pivot `nad_policy_hits` and the rest of the role off MnT

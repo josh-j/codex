@@ -101,6 +101,39 @@ def _contains(row: dict[str, Any], query: str, fields: list[str] | None = None) 
     return needle in haystack
 
 
+def _parse_other_attr_string(value: Any) -> dict[str, str]:
+    """Explode MnT's C(other_attr_string) blob into a flat key→value dict.
+
+    Session/MACAddress on ISE 3.3 doesn't surface C(ISEPolicySetName),
+    C(AuthorizationPolicyMatchedRule), C(IdentitySelectionMatchedRule), or
+    C(IdentityPolicyMatchedRule) as top-level XML elements — they live inside
+    a single C(other_attr_string) value formatted as
+    C(:!:Key1=Val1:!:Key2=Val2:!:...). Operator notes claimed MnT didn't
+    expose rule names per session at all; this parser is what makes the
+    matched authc/authz rule and policy-set names actually reachable.
+
+    Empty / malformed segments are skipped. Returns an empty dict for
+    anything that isn't a non-empty string.
+    """
+    if not isinstance(value, str) or not value:
+        return {}
+    result: dict[str, str] = {}
+    for part in value.split(":!:"):
+        if "=" not in part:
+            continue
+        key, _, val = part.partition("=")
+        key = key.strip()
+        val = val.strip()
+        if key and val:
+            result[key] = val
+    return result
+
+
+def ise_parse_other_attr_string(value: Any) -> dict[str, str]:
+    """Public filter alias for :func:`_parse_other_attr_string`."""
+    return _parse_other_attr_string(value)
+
+
 def _normalize_location(loc: Any) -> str:
     """Strip ``All Locations#`` from the front of the per-session location
     hierarchy so it matches the format the NAD inventory emits.
@@ -368,6 +401,15 @@ def ise_auth_rows(value: Any) -> list[dict[str, Any]]:
     for item in ise_result_rows(value):
         if not isinstance(item, dict):
             continue
+        # Explode other_attr_string (the :!:Key=Val:!: blob MnT uses to ship
+        # post-evaluation policy state) so its embedded keys —
+        # ISEPolicySetName, AuthorizationPolicyMatchedRule,
+        # IdentityPolicyMatchedRule, IdentitySelectionMatchedRule — become
+        # first-class fields in the same dict. Top-level XML elements (where
+        # ISE happens to emit them) still win on conflict.
+        other_attrs = _parse_other_attr_string(item.get("other_attr_string", ""))
+        if other_attrs:
+            item = {**other_attrs, **item}
         # ISE MnT XML element names vary across ISE 3.1–3.5 and across
         # Session/ActiveList vs AuthStatus vs MACAddress vs UserName
         # endpoints. The fallback chains below cover the union of names
@@ -556,12 +598,17 @@ def ise_auth_rows(value: Any) -> list[dict[str, Any]]:
                 # legacy "matched_rule" column conflated them. Expose all
                 # three: authentication_rule, authorization_rule, policy_set,
                 # plus a compatibility-preserving matched_rule.
+                # IdentityPolicyMatchedRule and IdentitySelectionMatchedRule
+                # come out of other_attr_string on ISE 3.3 — see
+                # _parse_other_attr_string and the merge step above.
                 "authentication_rule": _first(
                     item,
                     [
                         "authentication_rule",
                         "authenticationRule",
                         "authenticationPolicyMatchedRule",
+                        "IdentityPolicyMatchedRule",
+                        "IdentitySelectionMatchedRule",
                     ],
                 ),
                 "authorization_rule": _first(
@@ -570,6 +617,7 @@ def ise_auth_rows(value: Any) -> list[dict[str, Any]]:
                         "authorization_rule",
                         "authorizationRule",
                         "authorizationPolicyMatchedRule",
+                        "AuthorizationPolicyMatchedRule",
                     ],
                 ),
                 "policy_set": _first(
@@ -578,6 +626,7 @@ def ise_auth_rows(value: Any) -> list[dict[str, Any]]:
                         "policy_set_name",
                         "policySetName",
                         "policyset",
+                        "ISEPolicySetName",
                     ],
                 ),
                 "matched_rule": _first(
@@ -586,12 +635,16 @@ def ise_auth_rows(value: Any) -> list[dict[str, Any]]:
                         "authorization_rule",
                         "authorizationRule",
                         "authorizationPolicyMatchedRule",
+                        "AuthorizationPolicyMatchedRule",
                         "authentication_rule",
                         "authenticationRule",
                         "authenticationPolicyMatchedRule",
+                        "IdentityPolicyMatchedRule",
+                        "IdentitySelectionMatchedRule",
                         "matchedRule",
                         "auth_rule",
                         "policy_set_name",
+                        "ISEPolicySetName",
                     ],
                 ),
             }
@@ -948,6 +1001,53 @@ def ise_endpoint_policy_summary(rows: Any) -> list[dict[str, Any]]:
     )
 
 
+def ise_authentication_rule_summary(rows: Any) -> list[dict[str, Any]]:
+    """Count by matched authentication rule.
+
+    Sourced from ``IdentityPolicyMatchedRule`` / ``IdentitySelectionMatchedRule``
+    inside ``other_attr_string`` — see :func:`_parse_other_attr_string`. Only
+    reachable on ISE 3.3 once the embedded blob is exploded into the row.
+    """
+    return _group_count(
+        rows,
+        key_field="authentication_rule",
+        column_name="authentication_rule",
+        sample_fields=("authentication_method", "authentication_protocol", "username", "mac"),
+    )
+
+
+def ise_authorization_rule_summary(rows: Any) -> list[dict[str, Any]]:
+    """Count by matched authorization rule.
+
+    Sourced from ``AuthorizationPolicyMatchedRule`` inside
+    ``other_attr_string``. This is the ground-truth signal for which authz
+    rule an endpoint hits — strictly better than profile-name heuristics
+    when rule naming conventions reflect open- vs closed-mode operation.
+    """
+    return _group_count(
+        rows,
+        key_field="authorization_rule",
+        column_name="authorization_rule",
+        sample_fields=("authorization_profile", "identity_group", "username", "mac"),
+    )
+
+
+def ise_policy_set_summary(rows: Any) -> list[dict[str, Any]]:
+    """Count by matched policy set.
+
+    Sourced from ``ISEPolicySetName`` inside ``other_attr_string``. Policy
+    set names often contain the literal string ``Open Mode`` / ``Closed
+    Mode``, so this column doubles as a direct configuration readout per
+    NAD.
+    """
+    return _group_count(
+        rows,
+        key_field="policy_set",
+        column_name="policy_set",
+        sample_fields=("authorization_rule", "authentication_rule", "authorization_profile", "mac"),
+    )
+
+
 def ise_cts_sgt_summary(rows: Any) -> list[dict[str, Any]]:
     """Count by ``cts_security_group`` (Cisco TrustSec SGT name)."""
     return _group_count(
@@ -1199,6 +1299,7 @@ class FilterModule:
             "ise_auth_rows": ise_auth_rows,
             "ise_coa_candidates": ise_coa_candidates,
             "ise_normalize_mac": ise_normalize_mac,
+            "ise_parse_other_attr_string": ise_parse_other_attr_string,
             "ise_mnt_version": ise_mnt_version,
             "ise_mnt_active_count": ise_mnt_active_count,
             "ise_mnt_active_sessions": ise_mnt_active_sessions,
@@ -1218,6 +1319,9 @@ class FilterModule:
             "ise_policy_hit_summary": ise_policy_hit_summary,
             "ise_authz_profile_summary": ise_authz_profile_summary,
             "ise_authc_method_summary": ise_authc_method_summary,
+            "ise_authentication_rule_summary": ise_authentication_rule_summary,
+            "ise_authorization_rule_summary": ise_authorization_rule_summary,
+            "ise_policy_set_summary": ise_policy_set_summary,
             "ise_status_breakdown": ise_status_breakdown,
             "ise_identity_group_summary": ise_identity_group_summary,
             "ise_endpoint_policy_summary": ise_endpoint_policy_summary,
