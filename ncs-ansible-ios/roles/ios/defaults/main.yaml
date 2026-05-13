@@ -16,6 +16,12 @@ ios_voice_vlan: null
 ios_description: null
 ios_shutdown: null
 
+# --- switchport_config_bulk operation ---
+# YAML / JSON array string the operator pastes via the console. Each
+# item must carry `interface`; any of access_vlan / voice_vlan /
+# description / shutdown is optional per item.
+ios_switchports: ""
+
 # --- apply_template operation ---
 # Both required.
 ios_template_name: ""

@@ -15,11 +15,13 @@
     _ncs_allowed_profiles: []
     _ncs_allowed_operations:
       - switchport_config
+      - switchport_config_bulk
       - apply_template
       - change_syslog
     _dispatch_map:
       _default_: collect
       collect: collect
       switchport_config: ops/switchport_config
+      switchport_config_bulk: ops/switchport_config_bulk
       apply_template: ops/apply_template
       change_syslog: ops/change_syslog

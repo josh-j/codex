@@ -17,6 +17,12 @@
 #   ios_description: "text | Description | Interface description (leave blank to skip)"
 #   ios_shutdown: "text | Shutdown? | true to shut, false to no-shut, blank to leave alone"
 # ---
+# label: Switchport Config (Bulk)
+# operation: switchport_config_bulk
+# mutating: true
+# options:
+#   ios_switchports: "text | Switchports (YAML / JSON list) | List of dicts, e.g. `[{interface: Gi1/0/10, access_vlan: 20, voice_vlan: 30, description: 'printer'}, {interface: Gi1/0/11, shutdown: false}]`"
+# ---
 # label: Apply Interface Template
 # operation: apply_template
 # mutating: true

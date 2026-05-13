@@ -1,0 +1,130 @@
+---
+# internal.ios.ios : tasks/ops/switchport_config_bulk.yaml
+#
+# Mutating: apply switchport changes to N interfaces in one run.
+# Operator pastes a YAML / JSON array (`ios_switchports`) of items
+# shaped like the per-item args of switchport_config, e.g.
+#
+#   - interface: GigabitEthernet1/0/10
+#     access_vlan: 20
+#     voice_vlan: 30
+#     description: "user printer"
+#   - interface: GigabitEthernet1/0/11
+#     access_vlan: 20
+#     shutdown: false
+#
+# Resource modules (cisco.ios.ios_l2_interfaces / ios_interfaces)
+# already accept a list and produce a single minimal-diff push, so
+# we hand the whole batch in one task instead of looping in Ansible.
+
+- name: "IOS Op | Parse ios_switchports payload"
+  ansible.builtin.set_fact:
+    _ios_switchports: "{{ ios_switchports | from_yaml if ios_switchports is string else ios_switchports }}"
+
+- name: "IOS Op | Validate switchport_config_bulk inputs"
+  ansible.builtin.assert:
+    that:
+      - _ios_switchports is iterable
+      - _ios_switchports | length > 0
+      - _ios_switchports | rejectattr('interface', 'defined') | list | length == 0
+    fail_msg: "ios_switchports must be a non-empty list of dicts, each with an 'interface' key."
+
+# Build the two resource-module configs item-by-item via combine, so
+# null / undefined per-item fields drop out of the pushed config
+# rather than being passed through as `description: None` (which the
+# resource module would interpret as "clear it").
+- name: "IOS Op | Initialize batch lists"
+  ansible.builtin.set_fact:
+    _ios_l2_items: []
+    _ios_iface_items: []
+
+- name: "IOS Op | Shape l2_interfaces config"
+  ansible.builtin.set_fact:
+    _ios_l2_items: "{{ _ios_l2_items + [_l2_item] }}"
+  loop: "{{ _ios_switchports }}"
+  loop_control:
+    label: "{{ item.interface }}"
+  when:
+    - (item.access_vlan is defined and item.access_vlan is not none)
+      or (item.voice_vlan is defined and item.voice_vlan is not none)
+  vars:
+    _l2_item: >-
+      {{
+        {'name': item.interface, 'mode': 'access'}
+        | combine(
+            {'access': {'vlan': item.access_vlan | int}}
+            if (item.access_vlan is defined and item.access_vlan is not none)
+            else {}
+          )
+        | combine(
+            {'voice': {'vlan': item.voice_vlan | int}}
+            if (item.voice_vlan is defined and item.voice_vlan is not none)
+            else {}
+          )
+      }}
+
+- name: "IOS Op | Shape interfaces config"
+  ansible.builtin.set_fact:
+    _ios_iface_items: "{{ _ios_iface_items + [_iface_item] }}"
+  loop: "{{ _ios_switchports }}"
+  loop_control:
+    label: "{{ item.interface }}"
+  when:
+    - (item.description is defined and item.description is not none)
+      or (item.shutdown is defined and item.shutdown is not none)
+  vars:
+    _iface_item: >-
+      {{
+        {'name': item.interface}
+        | combine(
+            {'description': item.description}
+            if (item.description is defined and item.description is not none)
+            else {}
+          )
+        | combine(
+            {'enabled': not item.shutdown}
+            if (item.shutdown is defined and item.shutdown is not none)
+            else {}
+          )
+      }}
+
+- name: "IOS Op | Apply L2 properties batch"
+  cisco.ios.ios_l2_interfaces:
+    config: "{{ _ios_l2_items }}"
+    state: merged
+  when: _ios_l2_items | length > 0
+  register: _ios_op_l2
+
+- name: "IOS Op | Apply interface description / enabled batch"
+  cisco.ios.ios_interfaces:
+    config: "{{ _ios_iface_items }}"
+    state: merged
+  when: _ios_iface_items | length > 0
+  register: _ios_op_iface
+
+- name: "IOS Op | Build switchport_config_bulk result"
+  ansible.builtin.set_fact:
+    _ios_op_result:
+      operation: switchport_config_bulk
+      hostname: "{{ inventory_hostname }}"
+      ran_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+      requested_count: "{{ _ios_switchports | length }}"
+      l2_changed: "{{ _ios_op_l2.changed | default(false) }}"
+      l2_commands: "{{ _ios_op_l2.commands | default([]) }}"
+      iface_changed: "{{ _ios_op_iface.changed | default(false) }}"
+      iface_commands: "{{ _ios_op_iface.commands | default([]) }}"
+      interfaces: "{{ _ios_switchports | map(attribute='interface') | list }}"
+
+- name: "IOS Op | Emit switchport_config_bulk result"
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    _ncs_emit_platform: "network/ios"
+    _ncs_emit_payload: "{{ _ios_op_result }}"
+    _ncs_emit_skip: "{{ ios_skip_export | default(false) }}"
+    _ncs_emit_tree_path:
+      - ios
+      - "{{ inventory_hostname }}"
+      - ops
+    _ncs_emit_artifact_kind: operation
+    _ncs_emit_artifact_id: "switchport_config_bulk-{{ _ios_switchports | length }}-ports"

@@ -12,6 +12,7 @@ argument_specs:
         type: str
         choices:
           - switchport_config
+          - switchport_config_bulk
           - apply_template
           - change_syslog
         description: When ncs_action=operate, which op to dispatch.
