@@ -1,0 +1,17 @@
+---
+argument_specs:
+  main:
+    short_description: Cisco IOS / IOS-XE role entry point
+    options:
+      ncs_action:
+        type: str
+        default: collect
+        choices: [collect, operate]
+        description: Collect baseline state or run an operator-driven config op.
+      ncs_operation:
+        type: str
+        choices:
+          - switchport_config
+          - apply_template
+          - change_syslog
+        description: When ncs_action=operate, which op to dispatch.

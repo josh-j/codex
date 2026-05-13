@@ -10,6 +10,9 @@
 - name: "Phase 2 | aci collect"
   ansible.builtin.import_playbook: internal.aci.collect
 
+- name: "Phase 2 | ios collect"
+  ansible.builtin.import_playbook: internal.ios.collect
+
 - name: "Phase 2 | ise collect"
   ansible.builtin.import_playbook: internal.ise.collect
 

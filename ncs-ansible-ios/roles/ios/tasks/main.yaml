@@ -1,0 +1,25 @@
+---
+# internal.ios.ios : tasks/main.yaml
+
+- name: "IOS | Capture task root"
+  ansible.builtin.set_fact:
+    _ncs_task_root: "{{ role_path }}/tasks"
+  changed_when: false
+
+- name: "IOS | Dispatch"
+  ansible.builtin.include_role:
+    name: internal.core.dispatch
+  vars:
+    _ncs_role_label: IOS
+    _ncs_default_action: collect
+    _ncs_allowed_profiles: []
+    _ncs_allowed_operations:
+      - switchport_config
+      - apply_template
+      - change_syslog
+    _dispatch_map:
+      _default_: collect
+      collect: collect
+      switchport_config: ops/switchport_config
+      apply_template: ops/apply_template
+      change_syslog: ops/change_syslog

@@ -213,7 +213,7 @@ build-collections-all:
     set -euo pipefail
     mkdir -p dist
     rm -f dist/internal-*.tar.gz
-    for name in core vmware linux windows aci ise; do
+    for name in core vmware linux windows aci ise ios; do
         just build-collection "$name"
     done
     echo "✓ all collections built under dist/"
@@ -283,7 +283,7 @@ new-collection name:
         echo "$dest already exists; refusing to overwrite." >&2
         exit 1
     fi
-    cp -r ncs-ansible-collection-template "$dest"
+    cp -r ../ncs-ansible-collection-template "$dest"
     # Substitute placeholders across every text file in the new repo.
     find "$dest" -type f ! -name '*.tar.gz' -print0 \
         | xargs -0 sed -i "s/__COLLECTION_NAME__/{{ name }}/g"

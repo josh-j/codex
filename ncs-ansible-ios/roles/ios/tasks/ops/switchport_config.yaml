@@ -1,0 +1,71 @@
+---
+# internal.ios.ios : tasks/ops/switchport_config.yaml
+#
+# Mutating: change access vlan / voice vlan / description / enabled
+# state on one interface. Driven by ios_interface plus at least one of
+# ios_access_vlan, ios_voice_vlan, ios_description, ios_shutdown.
+
+- name: "IOS Op | Validate switchport_config inputs"
+  ansible.builtin.assert:
+    that:
+      - ios_interface | length > 0
+      - >-
+        ios_access_vlan is not none
+        or ios_voice_vlan is not none
+        or ios_description is not none
+        or ios_shutdown is not none
+    fail_msg: "switchport_config requires ios_interface and at least one of ios_access_vlan / ios_voice_vlan / ios_description / ios_shutdown"
+
+- name: "IOS Op | Apply L2 properties (access / voice vlan)"
+  cisco.ios.ios_l2_interfaces:
+    config:
+      - name: "{{ ios_interface }}"
+        mode: access
+        access:
+          vlan: "{{ ios_access_vlan | int }}"
+        voice: >-
+          {{ ({'vlan': ios_voice_vlan | int}) if ios_voice_vlan is not none else omit }}
+    state: merged
+  when: ios_access_vlan is not none or ios_voice_vlan is not none
+  register: _ios_op_l2
+
+- name: "IOS Op | Apply interface description / enabled"
+  cisco.ios.ios_interfaces:
+    config:
+      - name: "{{ ios_interface }}"
+        description: "{{ ios_description if ios_description is not none else omit }}"
+        enabled: "{{ (not ios_shutdown) if ios_shutdown is not none else omit }}"
+    state: merged
+  when: ios_description is not none or ios_shutdown is not none
+  register: _ios_op_iface
+
+- name: "IOS Op | Build switchport_config result"
+  ansible.builtin.set_fact:
+    _ios_op_result:
+      operation: switchport_config
+      hostname: "{{ inventory_hostname }}"
+      ran_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+      interface: "{{ ios_interface }}"
+      requested:
+        access_vlan: "{{ ios_access_vlan }}"
+        voice_vlan: "{{ ios_voice_vlan }}"
+        description: "{{ ios_description }}"
+        shutdown: "{{ ios_shutdown }}"
+      l2_changed: "{{ _ios_op_l2.changed | default(false) }}"
+      l2_commands: "{{ _ios_op_l2.commands | default([]) }}"
+      iface_changed: "{{ _ios_op_iface.changed | default(false) }}"
+      iface_commands: "{{ _ios_op_iface.commands | default([]) }}"
+
+- name: "IOS Op | Emit switchport_config result"
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    _ncs_emit_platform: "network/ios"
+    _ncs_emit_payload: "{{ _ios_op_result }}"
+    _ncs_emit_skip: "{{ ios_skip_export | default(false) }}"
+    _ncs_emit_tree_path:
+      - ios
+      - "{{ inventory_hostname }}"
+      - ops
+    _ncs_emit_artifact_kind: operation
+    _ncs_emit_artifact_id: "switchport_config-{{ ios_interface | regex_replace('[^A-Za-z0-9]+', '_') }}"

@@ -28,6 +28,8 @@ collections:
     type: file
   - name: "./collections/vendor/internal-ise-0.7.0.tar.gz"
     type: file
+  - name: "./collections/vendor/internal-ios-0.1.0.tar.gz"
+    type: file
 
   # --- Mode B: sibling working directories --------------------------------
   #
@@ -42,4 +44,6 @@ collections:
   # - name: "../ncs-ansible-aci"
   #   type: dir
   # - name: "../ncs-ansible-ise"
+  #   type: dir
+  # - name: "../ncs-ansible-ios"
   #   type: dir

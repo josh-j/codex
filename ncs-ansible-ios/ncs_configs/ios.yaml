@@ -1,0 +1,119 @@
+---
+# ncs-reporter schema for raw_ios.yaml.
+#
+# Auto-discovered by the orchestrator via
+# ncs-ansible/ncs_configs/config.yaml's extra_config_dirs entry.
+
+config:
+  platform: network/ios
+  display_name: Cisco IOS / IOS-XE
+  path_prefix: ios.{hostname}
+
+vars:
+  hostname:
+    path: hostname
+    fallback: "(unknown)"
+
+  collected_at:
+    path: collected_at
+    fallback: ""
+
+  version:
+    path: version
+    fallback: unknown
+  model:
+    path: model
+    fallback: unknown
+  serial:
+    path: serial
+    fallback: unknown
+  iostype:
+    path: iostype
+    fallback: ""
+
+  interfaces_total:
+    normalize:
+      count: net_interfaces
+    type: int
+    fallback: 0
+
+  vlan_brief_text:
+    path: raw_vlan_brief
+    fallback: ""
+  aaa_text:
+    path: raw_aaa
+    fallback: ""
+  radius_text:
+    path: raw_radius
+    fallback: ""
+  tacacs_text:
+    path: raw_tacacs
+    fallback: ""
+  syslog_text:
+    path: raw_logging_hosts
+    fallback: ""
+
+  has_radius:
+    compute: "{{ (radius_text | trim | length) > 0 }}"
+    type: bool
+  has_tacacs:
+    compute: "{{ (tacacs_text | trim | length) > 0 }}"
+    type: bool
+  has_aaa:
+    compute: "{{ has_radius or has_tacacs }}"
+    type: bool
+  has_syslog:
+    compute: "{{ (syslog_text | trim | length) > 0 }}"
+    type: bool
+
+alerts:
+  - id: no_aaa_servers
+    category: AAA
+    severity: WARNING
+    when: "not has_aaa"
+    msg: "No RADIUS / TACACS server config found on the switch"
+
+  - id: no_syslog_hosts
+    category: Logging
+    severity: WARNING
+    when: "not has_syslog"
+    msg: "No `logging host` lines found on the switch"
+
+widgets:
+  - type: stat_cards
+    name: "IOS Overview"
+    cards:
+      - name: Version
+        value: "{{ version }}"
+      - name: Model
+        value: "{{ model }}"
+      - name: Serial
+        value: "{{ serial }}"
+      - name: Interfaces
+        value: "{{ interfaces_total }}"
+
+  - type: key_value
+    name: "AAA / Syslog"
+    fields:
+      - name: Has RADIUS
+        value: "{{ has_radius }}"
+      - name: Has TACACS
+        value: "{{ has_tacacs }}"
+      - name: Has Syslog
+        value: "{{ has_syslog }}"
+
+  - type: markdown
+    name: "show running-config | section aaa"
+    when: "has_aaa"
+    content: |
+      ```
+      {{ aaa_text }}
+      ```
+
+  - type: markdown
+    name: "show logging | include host"
+    when: "has_syslog"
+    content: |
+      ```
+      {{ syslog_text }}
+      ```

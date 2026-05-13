@@ -1,0 +1,12 @@
+# Scaffolded Justfile for an internal.ios sibling.
+# Imports the monorepo's shared recipes when ../ncs-ansible is a
+# checkout alongside this repo; silently no-ops otherwise so the
+# sibling is still usable in isolation.
+
+import? '../ncs-ansible/shared.just'
+
+# Collection-specific recipes go below. See the imported file for
+# lint / yamllint / build / clean.
+
+test:       (_test_check "playbooks/collect.yml")
+test-apply: (_test_apply "playbooks/collect.yml")

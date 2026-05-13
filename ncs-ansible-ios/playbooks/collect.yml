@@ -1,0 +1,21 @@
+---
+# internal/ios/playbooks/collect.yml
+# Baseline Cisco IOS / IOS-XE collect over SSH (network_cli). Operators
+# with httpapi-capable IOS-XE can override ansible_connection per-host
+# in inventory.
+#
+# Usage:
+#   ansible-playbook -i inventory/production internal.ios.collect
+
+- name: "Cisco IOS Collect"
+  hosts: "{{ ios_target_hosts | default('ios_switches') }}"
+  gather_facts: false
+  ignore_unreachable: true
+  connection: network_cli
+  vars:
+    ansible_network_os: ios
+  tags: ["ios", "audit"]
+  roles:
+    - role: internal.ios.ios
+      vars:
+        ncs_action: collect

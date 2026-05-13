@@ -1,0 +1,47 @@
+---
+# internal/ios/playbooks/ios_ops.yml
+# Operator-driven IOS / IOS-XE config operations, dispatched via
+# `ncs_operation`. The `# >>>` blocks below are console-annotation
+# metadata that ncs-console parses to render one button per
+# operation, with the form fields the op needs and `mutating: true`
+# so the operator gets the confirmation prompt before a change.
+
+# >>>
+# label: Switchport Config
+# operation: switchport_config
+# mutating: true
+# options:
+#   ios_interface: "text | Interface | Interface name on the switch (e.g. GigabitEthernet1/0/10)"
+#   ios_access_vlan: "text | Access VLAN | Numeric VLAN ID (leave blank to skip)"
+#   ios_voice_vlan: "text | Voice VLAN | Numeric VLAN ID (leave blank to skip)"
+#   ios_description: "text | Description | Interface description (leave blank to skip)"
+#   ios_shutdown: "text | Shutdown? | true to shut, false to no-shut, blank to leave alone"
+# ---
+# label: Apply Interface Template
+# operation: apply_template
+# mutating: true
+# options:
+#   ios_interface: "text | Interface | Interface name on the switch"
+#   ios_template_name: "text | Template Name | A port-template that already exists on the switch"
+# ---
+# label: Change Syslog Server
+# operation: change_syslog
+# mutating: true
+# options:
+#   ios_syslog_old: "text | Old Syslog Host | IP or hostname currently configured as `logging host`"
+#   ios_syslog_new: "text | New Syslog Host | IP or hostname to replace it with"
+#   ios_syslog_vrf: "text | VRF (optional) | Leave blank for the default VRF"
+# <<<
+
+- name: "Cisco IOS Ops"
+  hosts: "{{ ios_target_hosts | default('ios_switches') }}"
+  gather_facts: false
+  ignore_unreachable: true
+  connection: network_cli
+  vars:
+    ansible_network_os: ios
+  tags: ["ios", "operate"]
+  roles:
+    - role: internal.ios.ios
+      vars:
+        ncs_action: operate

@@ -1,0 +1,10 @@
+---
+galaxy_info:
+  role_name: ios
+  author: NCS
+  description: Cisco IOS / IOS-XE collect + small operator config ops.
+  license: GPL-3.0-or-later
+  min_ansible_version: "2.15"
+dependencies:
+  - role: internal.core.dispatch
+  - role: internal.core.emit

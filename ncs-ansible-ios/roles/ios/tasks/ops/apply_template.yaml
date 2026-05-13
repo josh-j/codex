@@ -1,0 +1,48 @@
+---
+# internal.ios.ios : tasks/ops/apply_template.yaml
+#
+# Mutating: push `interface <if>` + `source template <name>` so a
+# pre-existing IOS-XE port-template binds to the interface. The
+# template itself is assumed to already be defined on the box (we
+# don't manage template *definitions* in v0.1.0).
+
+- name: "IOS Op | Validate apply_template inputs"
+  ansible.builtin.assert:
+    that:
+      - ios_interface | length > 0
+      - ios_template_name | length > 0
+    fail_msg: "apply_template requires ios_interface and ios_template_name"
+
+- name: "IOS Op | Bind port-template to interface"
+  cisco.ios.ios_config:
+    parents:
+      - "interface {{ ios_interface }}"
+    lines:
+      - "source template {{ ios_template_name }}"
+    match: line
+  register: _ios_op_template
+
+- name: "IOS Op | Build apply_template result"
+  ansible.builtin.set_fact:
+    _ios_op_result:
+      operation: apply_template
+      hostname: "{{ inventory_hostname }}"
+      ran_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+      interface: "{{ ios_interface }}"
+      template: "{{ ios_template_name }}"
+      changed: "{{ _ios_op_template.changed | default(false) }}"
+      commands: "{{ _ios_op_template.updates | default([]) }}"
+
+- name: "IOS Op | Emit apply_template result"
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    _ncs_emit_platform: "network/ios"
+    _ncs_emit_payload: "{{ _ios_op_result }}"
+    _ncs_emit_skip: "{{ ios_skip_export | default(false) }}"
+    _ncs_emit_tree_path:
+      - ios
+      - "{{ inventory_hostname }}"
+      - ops
+    _ncs_emit_artifact_kind: operation
+    _ncs_emit_artifact_id: "apply_template-{{ ios_interface | regex_replace('[^A-Za-z0-9]+', '_') }}"

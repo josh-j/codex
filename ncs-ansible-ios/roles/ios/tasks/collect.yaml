@@ -1,0 +1,61 @@
+---
+# internal.ios.ios : tasks/collect.yaml
+#
+# Baseline read-only collect against an IOS / IOS-XE switch. Flattens
+# the well-known facts plus a small set of show-commands into one
+# payload, then hands it to internal.core.emit. Schema-side shaping
+# (filters, joins, threshold counts, etc.) lives in
+# ncs_configs/ios.yaml, not here.
+
+- name: "IOS | Gather IOS facts"
+  cisco.ios.ios_facts:
+    gather_subset:
+      - default
+      - hardware
+      - interfaces
+      - config
+
+- name: "IOS | Collect supplementary show output"
+  cisco.ios.ios_command:
+    commands:
+      - show inventory
+      - show vlan brief
+      - show interfaces status
+      - show running-config | section aaa
+      - show running-config | section radius
+      - show running-config | section tacacs
+      - show logging | include host|trap
+  register: _ios_show
+  changed_when: false
+
+- name: "IOS | Build collect payload"
+  ansible.builtin.set_fact:
+    _ios_collected:
+      hostname: "{{ inventory_hostname }}"
+      collected_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+      version: "{{ ansible_facts.get('net_version', 'unknown') }}"
+      model: "{{ ansible_facts.get('net_model', 'unknown') }}"
+      serial: "{{ ansible_facts.get('net_serialnum', 'unknown') }}"
+      hostname_configured: "{{ ansible_facts.get('net_hostname', '') }}"
+      image: "{{ ansible_facts.get('net_image', '') }}"
+      iostype: "{{ ansible_facts.get('net_iostype', '') }}"
+      net_interfaces: "{{ ansible_facts.get('net_interfaces', {}) }}"
+      net_all_ipv4_addresses: "{{ ansible_facts.get('net_all_ipv4_addresses', []) }}"
+      raw_inventory: "{{ _ios_show.stdout[0] | default('') }}"
+      raw_vlan_brief: "{{ _ios_show.stdout[1] | default('') }}"
+      raw_interfaces_status: "{{ _ios_show.stdout[2] | default('') }}"
+      raw_aaa: "{{ _ios_show.stdout[3] | default('') }}"
+      raw_radius: "{{ _ios_show.stdout[4] | default('') }}"
+      raw_tacacs: "{{ _ios_show.stdout[5] | default('') }}"
+      raw_logging_hosts: "{{ _ios_show.stdout[6] | default('') }}"
+
+- name: "IOS | Emit raw_ios.yaml"
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    _ncs_emit_platform: "network/ios"
+    _ncs_emit_payload: "{{ _ios_collected }}"
+    _ncs_emit_skip: "{{ ios_skip_export | default(false) }}"
+    _ncs_emit_tree_path:
+      - ios
+      - "{{ inventory_hostname }}"

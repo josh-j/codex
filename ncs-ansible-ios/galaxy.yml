@@ -1,0 +1,19 @@
+---
+namespace: internal
+name: ios
+version: 0.1.0
+readme: README.md
+authors:
+  - NCS
+description: "Cisco IOS / IOS-XE collect + small operator config ops for the NCS fleet."
+license: ["GPL-3.0-or-later"]
+tags:
+  - cisco
+  - ios
+  - iosxe
+  - switch
+  - network
+  - infrastructure
+  - security
+dependencies:
+  "internal.core": ">=1.0.0,<2.0.0"

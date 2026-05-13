@@ -1,0 +1,14 @@
+---
+ansible_connection: network_cli
+ansible_network_os: ios
+ansible_user: svc-ansible
+
+# Encrypt these with ansible-vault encrypt_string against tests/.vault_pass
+# (the .vault_pass file itself is gitignored).
+ansible_password: "{{ vault_ios_password }}"
+ansible_become: true
+ansible_become_method: enable
+ansible_become_password: "{{ vault_ios_enable_password }}"
+
+vault_ios_password: "replace-me-with-vaulted-value"
+vault_ios_enable_password: "replace-me-with-vaulted-value"

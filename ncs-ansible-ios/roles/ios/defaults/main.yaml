@@ -1,0 +1,27 @@
+---
+# internal.ios.ios : defaults/main.yaml
+
+# Inventory group the playbooks target by default; override per-run.
+ios_target_hosts: ios_switches
+
+# Skip the internal.core.emit step (handy for ad-hoc collects).
+ios_skip_export: false
+
+# --- switchport_config operation ---
+# Required: ios_interface (the interface name, e.g. GigabitEthernet1/0/10)
+# At least one of these other fields must be set; null means "don't change".
+ios_interface: ""
+ios_access_vlan: null
+ios_voice_vlan: null
+ios_description: null
+ios_shutdown: null
+
+# --- apply_template operation ---
+# Both required.
+ios_template_name: ""
+
+# --- change_syslog operation ---
+# ios_syslog_old + ios_syslog_new required; ios_syslog_vrf optional.
+ios_syslog_old: ""
+ios_syslog_new: ""
+ios_syslog_vrf: ""

@@ -1,0 +1,55 @@
+---
+# internal.ios.ios : tasks/ops/change_syslog.yaml
+#
+# Mutating: replace one `logging host <old>` line with
+# `logging host <new>`, optionally per VRF. Uses ios_config so we
+# don't depend on cisco.ios.ios_logging_global being present at a
+# specific version — every relevant IOS / IOS-XE release accepts
+# these CLI lines directly.
+
+- name: "IOS Op | Validate change_syslog inputs"
+  ansible.builtin.assert:
+    that:
+      - ios_syslog_old | length > 0
+      - ios_syslog_new | length > 0
+    fail_msg: "change_syslog requires ios_syslog_old and ios_syslog_new"
+
+- name: "IOS Op | Apply syslog host swap"
+  cisco.ios.ios_config:
+    lines: >-
+      {{
+        [
+          ('no logging host ' ~ ios_syslog_old)
+            ~ (' vrf ' ~ ios_syslog_vrf if ios_syslog_vrf else ''),
+          ('logging host ' ~ ios_syslog_new)
+            ~ (' vrf ' ~ ios_syslog_vrf if ios_syslog_vrf else ''),
+        ]
+      }}
+    match: line
+  register: _ios_op_syslog
+
+- name: "IOS Op | Build change_syslog result"
+  ansible.builtin.set_fact:
+    _ios_op_result:
+      operation: change_syslog
+      hostname: "{{ inventory_hostname }}"
+      ran_at: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+      old_host: "{{ ios_syslog_old }}"
+      new_host: "{{ ios_syslog_new }}"
+      vrf: "{{ ios_syslog_vrf }}"
+      changed: "{{ _ios_op_syslog.changed | default(false) }}"
+      commands: "{{ _ios_op_syslog.updates | default([]) }}"
+
+- name: "IOS Op | Emit change_syslog result"
+  ansible.builtin.include_role:
+    name: internal.core.emit
+  vars:
+    _ncs_emit_platform: "network/ios"
+    _ncs_emit_payload: "{{ _ios_op_result }}"
+    _ncs_emit_skip: "{{ ios_skip_export | default(false) }}"
+    _ncs_emit_tree_path:
+      - ios
+      - "{{ inventory_hostname }}"
+      - ops
+    _ncs_emit_artifact_kind: operation
+    _ncs_emit_artifact_id: "change_syslog-{{ ios_syslog_new | regex_replace('[^A-Za-z0-9]+', '_') }}"
