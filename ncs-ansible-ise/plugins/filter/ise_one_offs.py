@@ -101,6 +101,10 @@ def _contains(row: dict[str, Any], query: str, fields: list[str] | None = None) 
     return needle in haystack
 
 
+_OTHER_ATTR_SEP = ":!:"
+_OTHER_ATTR_KV_SEP = "="
+
+
 def _parse_other_attr_string(value: Any) -> dict[str, str]:
     """Explode MnT's C(other_attr_string) blob into a flat key→value dict.
 
@@ -118,10 +122,10 @@ def _parse_other_attr_string(value: Any) -> dict[str, str]:
     if not isinstance(value, str) or not value:
         return {}
     result: dict[str, str] = {}
-    for part in value.split(":!:"):
-        if "=" not in part:
+    for part in value.split(_OTHER_ATTR_SEP):
+        if _OTHER_ATTR_KV_SEP not in part:
             continue
-        key, _, val = part.partition("=")
+        key, _, val = part.partition(_OTHER_ATTR_KV_SEP)
         key = key.strip()
         val = val.strip()
         if key and val:
@@ -139,7 +143,7 @@ def _normalize_location(loc: Any) -> str:
     hierarchy so it matches the format the NAD inventory emits.
 
     MnT Session/MACAddress returns ``location`` as
-    ``All Locations#Germany#Ramstein AB#Bldg 313``. The NAD-inventory
+    ``All Locations#Country#Site#Building``. The NAD-inventory
     parser already strips ``Location#All Locations#`` from
     ``NetworkDeviceGroupList`` entries; keeping the session-side parity
     means PromQL / Jinja joins between the two work without per-call
@@ -629,6 +633,10 @@ def ise_auth_rows(value: Any) -> list[dict[str, Any]]:
                         "ISEPolicySetName",
                     ],
                 ),
+                # Back-compat conflated field — authz wins (it's the
+                # terminal decision), authc next, policy-set as a last
+                # resort so the column isn't empty when only the set
+                # name made it through.
                 "matched_rule": _first(
                     item,
                     [
@@ -911,7 +919,7 @@ def _group_count(
     ...]`` sorted by count.
 
     *split_on* turns a comma-separated MnT field (notably
-    ``selected_azn_profiles``, which can be ``"Aviano_VoIP,Last_Method"``)
+    ``selected_azn_profiles``, which can be ``"<Profile>,Last_Method"``)
     into one row per profile.
 
     *auth_only* drops accounting-Stop records (``acct_status_type=Stop``

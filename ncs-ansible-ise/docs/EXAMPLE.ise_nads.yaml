@@ -1,0 +1,65 @@
+# Example inventory config for the internal.ise.ise_nads plugin.
+#
+# Usage:
+#   1. Copy this file into your inventory tree as <name>.ise_nads.yaml
+#      (the .ise_nads.yaml suffix is how Ansible discovers it).
+#   2. Replace ise_pan_hostname / username / password with real values
+#      (vault the password — see EXAMPLES below).
+#   3. ansible-inventory -i <name>.ise_nads.yaml --list
+#      ansible-playbook  -i <name>.ise_nads.yaml site.yml
+#
+# Standard Constructable hooks apply: keyed_groups / compose / groups
+# all operate against the host vars the plugin sets per NAD.
+
+plugin: internal.ise.ise_nads
+
+hostname: ise-pan.example.com
+# port: 9060            # ERS default
+
+username: ers.readonly
+# Run `ansible-vault encrypt_string` to produce this in practice.
+password: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  3866666633323835...
+
+validate_certs: false   # set true if you've imported the PAN's CA
+# request_timeout: 60
+# max_workers: 16
+# page_size: 100
+# max_pages: 100
+
+# Optional: narrow to NADs whose name contains a substring (ERS
+# server-side filter). Empty = the full fleet.
+name_filter: ""
+
+# Default parent group every NAD lands in.
+parent_group: ise_nads
+
+# Enable Ansible's inventory cache so repeat invocations don't re-hit
+# the PAN — useful when you're iterating on a playbook.
+cache: true
+cache_plugin: jsonfile
+cache_connection: /tmp/ise_nads_cache
+cache_timeout: 3600
+
+# Generate dynamic groups from the NDG-derived host vars.
+keyed_groups:
+  - key: ise_device_type
+    prefix: type
+    separator: "_"
+  - key: ise_location
+    prefix: loc
+    separator: "_"
+  - key: ise_ops_owner
+    prefix: ops
+    separator: "_"
+
+# Compose extra host vars off the same data. Example: set
+# ansible_network_os to "ios" for anything ISE classifies as a switch.
+compose:
+  ansible_network_os: "'ios' if ise_device_type == 'Switch' else None"
+  is_ipsec: "'IPSEC#All IPSEC#Is IPSEC Device' in ise_groups"
+
+# Filter / add to groups conditionally with `groups:`.
+# groups:
+#   site_a_switches: "ise_device_type == 'Switch' and 'SiteA' in ise_location"

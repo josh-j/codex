@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.7.0
+
+- New `internal.ise.ise_nads` inventory plugin. Pulls NADs from a PAN
+  via ERS and yields each as an Ansible host with
+  `ansible_host=<first NetworkDeviceIPList entry>` and NDG hierarchy
+  (`ise_device_type`, `ise_location`, `ise_ops_owner`, `ise_groups`)
+  as host vars. Extends `Constructable` and `Cacheable`, so standard
+  `keyed_groups` / `compose` / `groups` keys in the inventory YAML
+  generate downstream groupings (e.g. `type_Switch`, `loc_Bldg_313`).
+  Honours Ansible inventory cache when enabled.
+- New shared `plugins/module_utils/ers.py` extracted from
+  `ise_network_devices_info`. Carries `ErsClient`, `list_nads`,
+  `fetch_detail`, `fetch_details_concurrent`, `first`, `first_ip`,
+  and `parse_ndg_list`. The module re-imports from there so the
+  inventory plugin and the audit module stay in lockstep.
+- Quality: extracted `:!:` / `=` separators in
+  `_parse_other_attr_string` to module-level constants
+  (`_OTHER_ATTR_SEP`, `_OTHER_ATTR_KV_SEP`), and added a one-line
+  comment on the `matched_rule` chain explaining the
+  authz > authn > policy-set precedence. (From /simplify against
+  the 0.6.1 commit.)
+
 ## 0.6.1
 
 - `ise_auth_rows` now explodes the `other_attr_string` blob that MnT
