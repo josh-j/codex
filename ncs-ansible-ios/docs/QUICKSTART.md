@@ -1,5 +1,36 @@
 # internal.ios — Quickstart
 
+## Prerequisites — install the third-party network collections
+
+`internal.ios` calls `cisco.ios.*` modules and runs over the
+`network_cli` connection plugin from `ansible.netcommon`. Neither
+ships with this collection — they're third-party and the umbrella's
+locally-vendored `requirements.yml` only carries the in-house
+`internal.*` tarballs. Install them once per server:
+
+```bash
+cd ncs-ansible
+just install-network-collections
+```
+
+That reads `ncs-ansible/requirements-network.yml` (`ansible.netcommon`
+and `cisco.ios` with minimum versions pinned) and lands them in
+`collections/` alongside the `internal.*` ones.
+
+### Airgapped install
+
+If the Ansible server has no Galaxy access, download the tarballs on
+a connected machine and copy them over:
+
+```bash
+# Connected machine:
+ansible-galaxy collection download ansible.netcommon cisco.ios \
+    -p /tmp/galaxy
+
+# scp /tmp/galaxy/*.tar.gz to the airgapped server, then:
+ansible-galaxy collection install --collections-path collections /tmp/galaxy/*.tar.gz
+```
+
 ## On the switches
 
 ```

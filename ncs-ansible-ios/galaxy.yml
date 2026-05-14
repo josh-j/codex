@@ -1,7 +1,7 @@
 ---
 namespace: internal
 name: ios
-version: 0.2.1
+version: 0.2.2
 readme: README.md
 authors:
   - NCS
@@ -17,3 +17,12 @@ tags:
   - security
 dependencies:
   "internal.core": ">=1.0.0,<2.0.0"
+  # Third-party network deps. ansible.netcommon provides the
+  # `network_cli` connection plugin (and httpapi, restconf); cisco.ios
+  # provides the ios_facts / ios_l2_interfaces / ios_config modules
+  # this role calls. ncs-ansible/requirements-network.yml is the
+  # operator-facing install entry point — these declarations help
+  # ansible-galaxy pull them as deps when the collection is installed
+  # from Galaxy directly.
+  "ansible.netcommon": ">=6.0.0"
+  "cisco.ios": ">=5.0.0"

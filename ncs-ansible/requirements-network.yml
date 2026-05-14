@@ -1,0 +1,18 @@
+---
+# Third-party network-side Ansible collections required by
+# internal.ios (and any future internal.nxos / internal.junos /
+# internal.wlc collections that ship).
+#
+# This file is intentionally separate from requirements.yml — the
+# main requirements file is reserved for locally-vendored internal.*
+# tarballs and never reaches out to a remote. These deps DO need
+# Galaxy access (or pre-fetched tarballs in an airgapped install) to
+# resolve. See `just install-network-collections` for the connected
+# path and the airgapped instructions in
+# ncs-ansible-ios/docs/QUICKSTART.md.
+
+collections:
+  - name: ansible.netcommon
+    version: ">=6.0.0"
+  - name: cisco.ios
+    version: ">=5.0.0"

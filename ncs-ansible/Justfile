@@ -386,6 +386,28 @@ install-collections:
     echo "✓ collections installed from requirements.yml"
     {{ python }} scripts/regenerate_site_playbooks.py
 
+# Install the third-party network collections internal.ios depends on
+# (ansible.netcommon for the network_cli connection plugin, cisco.ios
+# for the resource / facts / config modules). Hits Galaxy — needs
+# internet. Airgapped installs: pre-download the tarballs and pass
+# them directly to `ansible-galaxy collection install`.
+install-network-collections:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ca_bundle=""
+    if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+        ca_bundle=/etc/ssl/certs/ca-certificates.crt
+    else
+        ca_bundle="$({{ python }} -c 'import ssl; print(ssl.get_default_verify_paths().cafile or "")')"
+    fi
+    if [ -n "$ca_bundle" ] && [ -f "$ca_bundle" ]; then
+        export SSL_CERT_FILE="$ca_bundle"
+        export REQUESTS_CA_BUNDLE="$ca_bundle"
+    fi
+    .venv/bin/ansible-galaxy collection install -r requirements-network.yml \
+        --collections-path collections/ --force
+    echo "✓ network collections installed from requirements-network.yml"
+
 # Rebuild the fleet-level site_<verb>_only.yml orchestrators from whatever
 # internal.* collections are currently installed under collections/. Useful
 # when you just added or removed a sibling without running a full install.

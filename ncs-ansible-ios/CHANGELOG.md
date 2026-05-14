@@ -1,5 +1,23 @@
 # Changelog — internal.ios
 
+## 0.2.2
+
+- `galaxy.yml` `dependencies:` now declares `ansible.netcommon
+  (>=6.0.0)` and `cisco.ios (>=5.0.0)`. They're not vendored in the
+  umbrella — the framework's `requirements.yml` only carries the
+  in-house `internal.*` tarballs — but the declaration means
+  `ansible-galaxy collection install internal.ios` from Galaxy
+  resolves them automatically.
+- New `ncs-ansible/requirements-network.yml` is the operator entry
+  point for the same two deps; `just install-network-collections`
+  runs `ansible-galaxy collection install -r requirements-network.yml`.
+  Separate from the umbrella's primary `requirements.yml` so the
+  "locally-resolved only" promise of the main file stays intact.
+- `docs/QUICKSTART.md` covers both the connected install path
+  (`just install-network-collections`) and the airgapped path
+  (pre-download via `ansible-galaxy collection download` on a
+  connected machine, scp, install from local tarballs).
+
 ## 0.2.1
 
 - Drop `internal.core.dispatch` and `internal.core.emit` from

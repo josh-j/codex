@@ -9,6 +9,10 @@ dependencies = [
     "requests",
     "ciscoisesdk",
     "ncs-reporter",
+    # SSH transport for ansible.netcommon's network_cli connection
+    # plugin (used by cisco.ios + internal.ios). Without it, switch
+    # runs fail with "No module named 'paramiko'".
+    "paramiko",
 ]
 
 [project.optional-dependencies]
