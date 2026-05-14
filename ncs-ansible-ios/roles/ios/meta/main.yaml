@@ -5,6 +5,11 @@ galaxy_info:
   description: Cisco IOS / IOS-XE collect + small operator config ops.
   license: GPL-3.0-or-later
   min_ansible_version: "2.15"
-dependencies:
-  - role: internal.core.dispatch
-  - role: internal.core.emit
+# `internal.core.dispatch` and `internal.core.emit` are NOT listed as
+# meta deps — they're invoked explicitly via `include_role:` from
+# tasks/main.yaml + ops tasks so the per-call `vars:` block (which
+# carries `_ncs_role_label`, `_dispatch_map`, etc.) reaches them.
+# Listing them here would auto-load them at role-include time without
+# those vars and they'd fail rendering `_ncs_role_label`-templated
+# task names.
+dependencies: []

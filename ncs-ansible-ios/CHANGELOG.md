@@ -1,5 +1,19 @@
 # Changelog — internal.ios
 
+## 0.2.1
+
+- Drop `internal.core.dispatch` and `internal.core.emit` from
+  `roles/ios/meta/main.yaml` `dependencies:`. They're already invoked
+  explicitly via `include_role:` from `tasks/main.yaml` (and from
+  each op task) with the per-call `vars:` block carrying
+  `_ncs_role_label`, `_dispatch_map`, etc. Listing them as meta deps
+  caused Ansible to auto-load `internal.core.dispatch` at role-include
+  time *before* the IOS role's tasks ran — so every dispatch task
+  name templating `{{ _ncs_role_label }}` rendered as
+  `<< error: _ncs_role_label is undefined >>`. The play continued
+  past the warnings (the dep invocation didn't actually run anything),
+  but the noise was a smell.
+
 ## 0.2.0
 
 - New `switchport_config_bulk` operation: same effect as
