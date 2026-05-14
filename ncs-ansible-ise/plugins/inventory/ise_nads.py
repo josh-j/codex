@@ -52,25 +52,47 @@ options:
     choices:
       - internal.ise.ise_nads
   hostname:
-    description: ISE Primary Admin Node hostname (serves ERS).
+    description:
+      - ISE Primary Admin Node hostname (serves ERS).
+      - Falls back to the C(ISE_HOST) environment variable if the
+        inventory YAML omits it. Lets one repo host multiple plugin
+        config files where each deployment's connection details live
+        in a per-shell C(.envrc) instead of the committed YAML.
     type: str
-    required: true
+    required: false
+    env:
+      - name: ISE_HOST
   port:
     description: ERS port (defaults to ISE's stock 9060).
     type: int
     default: 9060
+    env:
+      - name: ISE_ERS_PORT
   username:
-    description: ERS API username.
+    description:
+      - ERS API username. Falls back to C(ISE_API_USER) (or the
+        legacy C(ISE_USER)) if the YAML omits it.
     type: str
-    required: true
+    required: false
+    env:
+      - name: ISE_API_USER
+      - name: ISE_USER
   password:
-    description: ERS API password. Mark with C(!vault) in your inventory file.
+    description:
+      - ERS API password. Encrypt in-place with C(!vault), or fall
+        back to the C(ISE_API_PASSWORD) (or legacy C(ISE_PASSWORD))
+        environment variable when the YAML omits it.
     type: str
-    required: true
+    required: false
+    env:
+      - name: ISE_API_PASSWORD
+      - name: ISE_PASSWORD
   validate_certs:
     description: Verify the PAN's TLS certificate.
     type: bool
     default: false
+    env:
+      - name: ISE_VALIDATE_CERTS
   request_timeout:
     description: Per-request HTTPS timeout in seconds.
     type: int
@@ -167,10 +189,25 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
             self._emit_host(nad, parent_group, strict)
 
     def _fetch_nads(self) -> list[dict[str, Any]]:
+        hostname = self.get_option("hostname")
+        username = self.get_option("username")
+        password = self.get_option("password")
+        missing = [
+            name for name, value in
+            (("hostname", hostname), ("username", username), ("password", password))
+            if not value
+        ]
+        if missing:
+            raise AnsibleError(
+                "ise_nads: missing required option(s) "
+                + ", ".join(missing)
+                + ". Set in the YAML or via env "
+                + "(ISE_HOST / ISE_API_USER / ISE_API_PASSWORD)."
+            )
         client = ErsClient(
-            base_url=f"https://{self.get_option('hostname')}:{self.get_option('port')}",
-            username=self.get_option("username"),
-            password=self.get_option("password"),
+            base_url=f"https://{hostname}:{self.get_option('port')}",
+            username=username,
+            password=password,
             validate_certs=bool(self.get_option("validate_certs")),
             timeout=int(self.get_option("request_timeout")),
         )

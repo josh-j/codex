@@ -3,8 +3,9 @@
 # Usage:
 #   1. Copy this file into your inventory tree as <name>.ise_nads.yaml
 #      (the .ise_nads.yaml suffix is how Ansible discovers it).
-#   2. Replace ise_pan_hostname / username / password with real values
-#      (vault the password — see EXAMPLES below).
+#   2. Either fill in hostname / username / password below, or omit
+#      them and set ISE_HOST / ISE_API_USER / ISE_API_PASSWORD in the
+#      env (see "Siloing credentials" below for patterns).
 #   3. ansible-inventory -i <name>.ise_nads.yaml --list
 #      ansible-playbook  -i <name>.ise_nads.yaml site.yml
 #
@@ -13,6 +14,10 @@
 
 plugin: internal.ise.ise_nads
 
+# --- Connection ---
+# Each of hostname / username / password / validate_certs / port can
+# be omitted here and resolved from env vars instead (ISE_HOST,
+# ISE_API_USER, ISE_API_PASSWORD, ISE_VALIDATE_CERTS, ISE_ERS_PORT).
 hostname: ise-pan.example.com
 # port: 9060            # ERS default
 
@@ -63,3 +68,66 @@ compose:
 # Filter / add to groups conditionally with `groups:`.
 # groups:
 #   site_a_switches: "ise_device_type == 'Switch' and 'SiteA' in ise_location"
+
+# =========================================================================
+# Siloing credentials across multiple ISE deployments / vaults
+# =========================================================================
+#
+# Three patterns, pick whichever matches your deployment story:
+#
+# --- 1. Per-shell env vars (one inventory file, multiple operators) ---
+#
+# Drop the username / password / hostname keys from this YAML entirely.
+# Each operator (or CI job) exports their own values:
+#
+#   export ISE_HOST=ise-prod-pan.example.com
+#   export ISE_API_USER=ers.readonly
+#   export ISE_API_PASSWORD='…'
+#   ansible-inventory -i inventory/ise_nads --graph
+#
+# Pair with direnv / .envrc per project root so each working tree
+# auto-loads its own credentials when you `cd` into it.
+#
+# --- 2. Multi-vault labels (one repo, multiple ISE deployments) ---
+#
+# Encrypt each deployment's password under a deployment-specific
+# vault label, then ship one .ise_nads.yaml per deployment.
+#
+#   echo '<prod-ers-password>' | ansible-vault encrypt_string \
+#       --vault-id prod@~/.vault/prod.pass --name 'password' --stdin-name password
+#   echo '<lab-ers-password>'  | ansible-vault encrypt_string \
+#       --vault-id lab@~/.vault/lab.pass   --name 'password' --stdin-name password
+#
+# The resulting !vault blocks carry the label in their header
+# ($ANSIBLE_VAULT;1.2;AES256;prod). At decrypt time Ansible matches
+# the label to the right key:
+#
+#   ansible-playbook \
+#     --vault-id prod@~/.vault/prod.pass \
+#     --vault-id lab@~/.vault/lab.pass  \
+#     -i inventory/ise_nads/prod.ise_nads.yaml site.yml
+#
+# Or put the list in ansible.cfg:
+#
+#   [defaults]
+#   vault_identity_list = prod@~/.vault/prod.pass, lab@~/.vault/lab.pass
+#
+# Each inventory file's password is decryptable only with its
+# matching label's key, so a leaked lab key never touches prod.
+#
+# --- 3. Per-inventory-dir vault password file ---
+#
+# Coarser-grained than #2 but no labels to manage:
+#
+#   inventory/
+#     prod/
+#       .vault_pass        # prod-only key (gitignored)
+#       switches.ise_nads.yaml
+#     lab/
+#       .vault_pass
+#       switches.ise_nads.yaml
+#
+# Run each with its own vault file:
+#
+#   ansible-playbook --vault-password-file inventory/prod/.vault_pass \
+#     -i inventory/prod ...

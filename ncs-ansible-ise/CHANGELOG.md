@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.7.1
+
+- `ise_nads` inventory plugin: `hostname`, `username`, `password`,
+  `validate_certs`, and `port` now resolve from env-var fallbacks
+  (`ISE_HOST`, `ISE_API_USER` / `ISE_USER`, `ISE_API_PASSWORD` /
+  `ISE_PASSWORD`, `ISE_VALIDATE_CERTS`, `ISE_ERS_PORT`) when the
+  inventory YAML omits them. Lets one repo ship multiple
+  `<deployment>.ise_nads.yaml` files where each deployment's
+  credentials live in a per-shell `.envrc` or CI env, never on disk.
+- Connection options are no longer `required:`; the plugin instead
+  raises an explicit `AnsibleError` listing the missing pieces if
+  none of YAML / env supplied them.
+- `docs/EXAMPLE.ise_nads.yaml` rewritten with three credential-silo
+  patterns (per-shell env, multi-vault labels via
+  `ansible-vault encrypt_string --vault-id <label>@<file>`, and
+  per-inventory-dir vault password files).
+
 ## 0.7.0
 
 - New `internal.ise.ise_nads` inventory plugin. Pulls NADs from a PAN
