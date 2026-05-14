@@ -58,6 +58,14 @@ keyed_groups:
   - key: ise_ops_owner
     prefix: ops
     separator: "_"
+  # Workcenter classifier — pairs with the per-workcenter group_vars
+  # vault layout in ncs-ansible/docs/VAULT_LABELED_GROUPS.md. Each
+  # ise_ops_owner value (e.g. `NetworkOps_Alpha`) becomes a group
+  # `workcenter_NetworkOps_Alpha` which Ansible auto-loads
+  # `group_vars/workcenter_NetworkOps_Alpha/{main,vault}.yaml` for.
+  - key: ise_ops_owner
+    prefix: workcenter
+    separator: "_"
 
 # Compose extra host vars off the same data. Example: set
 # ansible_network_os to "ios" for anything ISE classifies as a switch.

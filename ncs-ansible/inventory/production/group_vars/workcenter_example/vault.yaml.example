@@ -1,0 +1,27 @@
+# group_vars/workcenter_example/vault.yaml.example
+#
+# This is a *template* showing the secret keys a workcenter vault file
+# needs. The actual file would live next to main.yaml as `vault.yaml`
+# (no .example suffix) and be encrypted with ansible-vault BEFORE any
+# real values are added.
+#
+# Step-by-step:
+#
+#   # 1. Generate a per-workcenter key (sysadmin, one-time)
+#   openssl rand -base64 32 > /etc/ansible/vaults/example.pass
+#   chmod 600 /etc/ansible/vaults/example.pass
+#   chown <operator>:<workcenter-group> /etc/ansible/vaults/example.pass
+#
+#   # 2. Encrypt an empty file under that key
+#   ansible-vault create \
+#       --vault-id example@/etc/ansible/vaults/example.pass \
+#       inventory/production/group_vars/workcenter_example/vault.yaml
+#
+#   # 3. Inside the editor that opens, paste the keys below and fill
+#   #    in real values:
+
+---
+# vault_<workcenter>_<purpose>: <real-secret>
+vault_example_ise_password: "REPLACE-ME"
+vault_example_ssh_password: "REPLACE-ME"
+vault_example_enable_password: "REPLACE-ME"

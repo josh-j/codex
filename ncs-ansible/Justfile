@@ -302,6 +302,45 @@ new-collection name:
     echo "    2. back in this repo: just vendor-collections"
     echo "    3. add the new tarball to requirements.yml + commit"
 
+# Scaffold a new workcenter's group_vars dir from
+# inventory/production/group_vars/workcenter_example. Renames the
+# vault_example_* indirection keys to vault_<name>_* in main.yaml and
+# leaves vault.yaml as a placeholder for `ansible-vault create` to
+# encrypt under the workcenter's vault-id label.
+#
+# Usage: just new-workcenter alpha
+#
+# Then:
+#   ansible-vault create --vault-id alpha@/etc/ansible/vaults/alpha.pass \
+#       inventory/production/group_vars/workcenter_alpha/vault.yaml
+new-workcenter name:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    src="inventory/production/group_vars/workcenter_example"
+    dest="inventory/production/group_vars/workcenter_{{ name }}"
+    if [ ! -d "$src" ]; then
+        echo "$src is missing; can't scaffold." >&2
+        exit 1
+    fi
+    if [ -e "$dest" ]; then
+        echo "$dest already exists; refusing to overwrite." >&2
+        exit 1
+    fi
+    cp -r "$src" "$dest"
+    # Rename the vault_example_* indirection keys → vault_{{ name }}_*.
+    find "$dest" -type f \( -name '*.yaml' -o -name '*.yaml.example' \) -print0 \
+        | xargs -0 sed -i "s/vault_example_/vault_{{ name }}_/g"
+    # The .example template is a placeholder — drop the suffix on the
+    # plain main.yaml; leave the encrypted-file template as
+    # vault.yaml.example so `ansible-vault create` doesn't refuse.
+    if [ -f "$dest/vault.yaml.example" ]; then
+        echo "✓ Scaffolded $dest"
+        echo "  vault.yaml.example carries the placeholder keys; encrypt for real with:"
+        echo "    ansible-vault create --vault-id {{ name }}@<pass-path> $dest/vault.yaml"
+    fi
+    echo "  Then add the label to ansible.cfg's vault_identity_list:"
+    echo "    {{ name }}@/etc/ansible/vaults/{{ name }}.pass"
+
 # Rebuild every collection tarball and stage it under collections/vendor/
 # (the committed location requirements.yml Mode A points at). Run this
 # after a `just release-collection` so a fresh ncs-ansible `git pull`

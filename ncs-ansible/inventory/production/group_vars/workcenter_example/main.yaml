@@ -1,0 +1,38 @@
+---
+# group_vars/workcenter_example/main.yaml
+#
+# Plain (committed) group_vars for a workcenter. Pair with
+# vault.yaml.example which carries the secret values encrypted under
+# this workcenter's vault-id label.
+#
+# Conventions for the variable-indirection pattern below:
+#   - Playbook / role code references the plain names
+#     (`ise_password`, `ansible_password`, …).
+#   - Secret values live under `vault_<workcenter>_<purpose>` keys in
+#     the encrypted vault.yaml so the encrypted file's keys stay
+#     grep-able and an accidental plain-text edit jumps out.
+#
+# Workflow to stand up a new workcenter:
+#
+#   1. cp -r group_vars/workcenter_example group_vars/workcenter_<name>
+#   2. Rename every `vault_example_*` → `vault_<name>_*` in main.yaml.
+#   3. ansible-vault create
+#        --vault-id <name>@/etc/ansible/vaults/<name>.pass
+#        group_vars/workcenter_<name>/vault.yaml
+#      (or `encrypt` an existing plaintext file)
+#   4. Add `<name>@/etc/ansible/vaults/<name>.pass` to
+#      vault_identity_list in ansible.cfg.
+#   5. Run scoped: `ansible-playbook … --limit workcenter_<name>`.
+
+# Connection settings for ISE-side automation (used by internal.ise.collect
+# and any inventory plugin host that lands in this group).
+ise_username: ers.readonly
+ise_password: "{{ vault_example_ise_password }}"
+
+# Connection settings for switch / network-device automation
+# (internal.ios.collect / internal.ios.ios_ops).
+ansible_user: svc-ansible
+ansible_password: "{{ vault_example_ssh_password }}"
+ansible_become: true
+ansible_become_method: enable
+ansible_become_password: "{{ vault_example_enable_password }}"
