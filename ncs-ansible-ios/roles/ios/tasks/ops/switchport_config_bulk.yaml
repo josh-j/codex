@@ -29,63 +29,41 @@
       - _ios_switchports | rejectattr('interface', 'defined') | list | length == 0
     fail_msg: "ios_switchports must be a non-empty list of dicts, each with an 'interface' key."
 
-# Build the two resource-module configs item-by-item via combine, so
-# null / undefined per-item fields drop out of the pushed config
-# rather than being passed through as `description: None` (which the
-# resource module would interpret as "clear it").
+# Build the two resource-module configs in a single pass. Each item
+# emits 0 or 1 entry for l2_interfaces (vlan/voice fields) and 0 or 1
+# for interfaces (description/shutdown fields). `omit` doesn't survive
+# a set_fact round-trip, so undefined per-item fields are skipped by
+# combining with `{}` instead of leaving an `omit` marker in the dict.
 - name: "IOS Op | Initialize batch lists"
   ansible.builtin.set_fact:
     _ios_l2_items: []
     _ios_iface_items: []
 
-- name: "IOS Op | Shape l2_interfaces config"
+- name: "IOS Op | Shape resource-module configs"
   ansible.builtin.set_fact:
-    _ios_l2_items: "{{ _ios_l2_items + [_l2_item] }}"
+    _ios_l2_items: "{{ _ios_l2_items + ([_l2_one] if _has_l2 else []) }}"
+    _ios_iface_items: "{{ _ios_iface_items + ([_iface_one] if _has_iface else []) }}"
   loop: "{{ _ios_switchports }}"
   loop_control:
     label: "{{ item.interface }}"
-  when:
-    - (item.access_vlan is defined and item.access_vlan is not none)
-      or (item.voice_vlan is defined and item.voice_vlan is not none)
   vars:
-    _l2_item: >-
+    _has_access: "{{ item.access_vlan is defined and item.access_vlan is not none }}"
+    _has_voice: "{{ item.voice_vlan is defined and item.voice_vlan is not none }}"
+    _has_desc: "{{ item.description is defined and item.description is not none }}"
+    _has_shut: "{{ item.shutdown is defined and item.shutdown is not none }}"
+    _has_l2: "{{ _has_access or _has_voice }}"
+    _has_iface: "{{ _has_desc or _has_shut }}"
+    _l2_one: >-
       {{
         {'name': item.interface, 'mode': 'access'}
-        | combine(
-            {'access': {'vlan': item.access_vlan | int}}
-            if (item.access_vlan is defined and item.access_vlan is not none)
-            else {}
-          )
-        | combine(
-            {'voice': {'vlan': item.voice_vlan | int}}
-            if (item.voice_vlan is defined and item.voice_vlan is not none)
-            else {}
-          )
+        | combine({'access': {'vlan': item.access_vlan | int}} if _has_access else {})
+        | combine({'voice': {'vlan': item.voice_vlan | int}} if _has_voice else {})
       }}
-
-- name: "IOS Op | Shape interfaces config"
-  ansible.builtin.set_fact:
-    _ios_iface_items: "{{ _ios_iface_items + [_iface_item] }}"
-  loop: "{{ _ios_switchports }}"
-  loop_control:
-    label: "{{ item.interface }}"
-  when:
-    - (item.description is defined and item.description is not none)
-      or (item.shutdown is defined and item.shutdown is not none)
-  vars:
-    _iface_item: >-
+    _iface_one: >-
       {{
         {'name': item.interface}
-        | combine(
-            {'description': item.description}
-            if (item.description is defined and item.description is not none)
-            else {}
-          )
-        | combine(
-            {'enabled': not item.shutdown}
-            if (item.shutdown is defined and item.shutdown is not none)
-            else {}
-          )
+        | combine({'description': item.description} if _has_desc else {})
+        | combine({'enabled': not item.shutdown} if _has_shut else {})
       }}
 
 - name: "IOS Op | Apply L2 properties batch"
