@@ -1522,11 +1522,28 @@ function Get-NcsStarRatio {
     return $Default
 }
 
+function Sync-NcsDispatcher {
+    <#
+    .SYNOPSIS Yield to the WPF dispatcher long enough to paint pending UI
+    updates (status text, spinner visibility) before the next synchronous
+    blocking call. Without this, a chain of `StatusTextBlock.Text = ...`
+    followed by a multi-second SSH probe looks frozen because the text
+    change never gets rendered.
+    #>
+    param(
+        [Parameter(Mandatory)] [hashtable] $Controls
+    )
+    $dispatcher = $Controls.StatusTextBlock.Dispatcher
+    if ($null -eq $dispatcher) { return }
+    [void] $dispatcher.Invoke([action] { }, [System.Windows.Threading.DispatcherPriority]::Render)
+}
+
 function Set-NcsBusy {
     <#
     .SYNOPSIS Show or hide the indeterminate progress indicator in the status bar.
     .DESCRIPTION Optionally overrides the status text. Call with -Busy:$false at the end
-                 of an async op (in a finally block).
+                 of an async op (in a finally block). Pumps the dispatcher so the
+                 spinner / status change paints before the next blocking call.
     #>
     param(
         [Parameter(Mandatory)] [hashtable] $Controls,
@@ -1537,6 +1554,7 @@ function Set-NcsBusy {
     if (-not [string]::IsNullOrEmpty($Status)) {
         $Controls.StatusTextBlock.Text = $Status
     }
+    Sync-NcsDispatcher -Controls $Controls
 }
 
 function Save-NcsActionMemory {
@@ -3649,14 +3667,28 @@ function Show-NcsConsoleApp {
                 $state.Settings.SshKeyPassphrase = $passphrase
             }
 
+            # Keep the busy spinner up for the entire connect sequence (preflight
+            # + inventory fetch + playbook scan + tree build). Each step is a
+            # synchronous SSH round-trip that blocks the dispatcher, so the
+            # status text + Sync-NcsDispatcher between steps is how the operator
+            # sees that progress is happening rather than the UI being dead.
             Set-NcsBusy -Controls $controls -Busy $true -Status "Connecting..."
+            $preflight = $null
             try {
-                $preflight = Test-NcsRemotePreflight -Settings $state.Settings
-            } finally {
-                Set-NcsBusy -Controls $controls -Busy $false
-            }
-            $state.PreflightResult = $preflight
-            if ($preflight.IsReady) {
+                try {
+                    $preflight = Test-NcsRemotePreflight -Settings $state.Settings
+                } catch {
+                    Set-NcsBusy -Controls $controls -Busy $false
+                    throw
+                }
+                $state.PreflightResult = $preflight
+                if (-not $preflight.IsReady) {
+                    Set-NcsBusy -Controls $controls -Busy $false
+                    $controls.StatusTextBlock.Text = ($preflight.BlockingIssues -join " | ")
+                    Set-NcsPreflightState -Controls $controls -State "Failed"
+                    return
+                }
+
                 Set-NcsPreflightState -Controls $controls -State "Connected"
                 if (-not [string]::IsNullOrWhiteSpace($preflight.Banner)) {
                     foreach ($bannerLine in ($preflight.Banner -split "`n")) {
@@ -3664,6 +3696,8 @@ function Show-NcsConsoleApp {
                     }
                 }
                 $statusParts = @("Connected.")
+
+                Set-NcsBusy -Controls $controls -Busy $true -Status "Loading inventory..."
                 try {
                     $inventoryTree = Get-NcsRemoteInventoryTree -Settings $state.Settings
                     if (@($inventoryTree).Length -gt 0) {
@@ -3676,6 +3710,8 @@ function Show-NcsConsoleApp {
                 } catch {
                     $statusParts += "Inventory fetch failed."
                 }
+
+                Set-NcsBusy -Controls $controls -Busy $true -Status "Scanning playbooks..."
                 try {
                     $script:ActionGroups = Get-NcsRemotePlaybookTree -Settings $state.Settings
                     $script:ActionItemMap = Get-NcsActionItemMap -Groups $script:ActionGroups
@@ -3689,6 +3725,8 @@ function Show-NcsConsoleApp {
                     $script:ActionFolderMap = @{}
                     $statusParts += "Playbook scan failed."
                 }
+
+                Set-NcsBusy -Controls $controls -Busy $true -Status "Building playbook tree..."
                 Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "action_id" -Expanded $true -LeafIcon $script:IconFile
                 $controls.PlaybookPlaceholder.Visibility = "Collapsed"
                 $controls.PlaybookSplitPane.Visibility = "Visible"
@@ -3706,20 +3744,20 @@ function Show-NcsConsoleApp {
                 }
 
                 $script:SchedulesLoaded = $false
-            } else {
-                $controls.StatusTextBlock.Text = ($preflight.BlockingIssues -join " | ")
-                Set-NcsPreflightState -Controls $controls -State "Failed"
+            } finally {
+                Set-NcsBusy -Controls $controls -Busy $false
             }
         } catch {
             $controls.StatusTextBlock.Text = $_.Exception.Message
             Set-NcsPreflightState -Controls $controls -State "Failed"
+            Set-NcsBusy -Controls $controls -Busy $false
         }
     })
 
     $controls.RefreshPlaybooksButton.Add_Click({
         if (-not $state.PreflightResult -or -not $state.PreflightResult.IsReady) { return }
         try {
-            Set-NcsBusy -Controls $controls -Busy $true -Status "Refreshing..."
+            Set-NcsBusy -Controls $controls -Busy $true -Status "Loading inventory..."
             $selectedAction = Get-NcsTreeViewSelection -Controls $controls -TreeViewName "ActionTreeView"
             try {
                 $inventoryTree = Get-NcsRemoteInventoryTree -Settings $state.Settings
@@ -3732,6 +3770,7 @@ function Show-NcsConsoleApp {
             } catch {
                 Add-NcsConsoleLine -Controls $controls -Line "Inventory refresh failed: $($_.Exception.Message)"
             }
+            Set-NcsBusy -Controls $controls -Busy $true -Status "Scanning playbooks..."
             try {
                 $script:ActionGroups = Get-NcsRemotePlaybookTree -Settings $state.Settings
                 $script:ActionItemMap = Get-NcsActionItemMap -Groups $script:ActionGroups
@@ -3742,6 +3781,7 @@ function Show-NcsConsoleApp {
                 $script:ActionFolderMap = @{}
                 Add-NcsConsoleLine -Controls $controls -Line "Playbook refresh failed: $($_.Exception.Message)"
             }
+            Set-NcsBusy -Controls $controls -Busy $true -Status "Building playbook tree..."
             Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "action_id" -Expanded $true -LeafIcon $script:IconFile
             Select-NcsTreeViewItem -TreeView $controls.ActionTreeView -Tag $selectedAction -FallbackToFirst
             $controls.StatusTextBlock.Text = "Refreshed."
