@@ -129,11 +129,16 @@ function Test-NcsRemotePreflight {
         "(mkdir -p `$HOME/$($script:NcsRemoteRunRoot) >/dev/null 2>&1 && touch `$HOME/$($script:NcsRemoteRunRoot)/preflight.write && rm -f `$HOME/$($script:NcsRemoteRunRoot)/preflight.write && echo CHECK:writable:ok) || echo CHECK:writable:fail"
     ) -join "; "
 
+    # NonBlocking checks are surfaced in the preflight list but don't block
+    # connection. Inventory and vault paths are folder-configurable now (see
+    # Settings.FolderDefaults), so the orchestrator defaults can be absent
+    # without the console being unusable — the remote wrapper hard-fails per
+    # run against the resolved path right before ansible-playbook starts.
     $checkMeta = [ordered]@{
         ssh        = @{ Id = "ssh-connectivity"; Stage = "ssh"; Name = "SSH connectivity"; FailMsg = "Could not connect to the remote host." }
         repo       = @{ Id = "repo-path"; Stage = "remote"; Name = "Repo path exists"; FailMsg = "Remote repo path does not exist." }
-        inventory  = @{ Id = "inventory-path"; Stage = "remote"; Name = "Inventory directory exists"; FailMsg = "Missing inventory/production/ on the remote repo." }
-        vault      = @{ Id = "vault-path"; Stage = "remote"; Name = "Vault password file exists"; FailMsg = "Missing .vaultpass in the remote repo." }
+        inventory  = @{ Id = "inventory-path"; Stage = "remote"; Name = "Default inventory directory exists"; FailMsg = "No inventory/production/ in the remote repo (folder defaults can still pick another inventory)."; NonBlocking = $true }
+        vault      = @{ Id = "vault-path"; Stage = "remote"; Name = "Default vault password file exists"; FailMsg = "No .vaultpass in the remote repo (folder defaults can still pick another vault file)."; NonBlocking = $true }
         ansible    = @{ Id = "ansible-path"; Stage = "remote"; Name = "ansible-playbook available"; FailMsg = "ansible-playbook not found in .venv or PATH." }
         reports    = @{ Id = "reports-path"; Stage = "remote"; Name = "Reports path exists"; FailMsg = "Remote reports path does not exist." }
         writable   = @{ Id = "remote-cache"; Stage = "remote"; Name = "Remote cache writable"; FailMsg = "Remote $($script:NcsRemoteRunRoot) is not writable." }
@@ -175,7 +180,8 @@ function Test-NcsRemotePreflight {
         $message = if ($passed) { "OK" } else { $meta.FailMsg }
         $check = New-NcsPreflightCheck -Id $meta.Id -Stage $meta.Stage -Name $meta.Name -Passed $passed -Message $message
         $result.Checks.Add($check)
-        if (-not $passed) {
+        $nonBlocking = $meta.ContainsKey("NonBlocking") -and $meta["NonBlocking"]
+        if (-not $passed -and -not $nonBlocking) {
             $result.BlockingIssues.Add("$($meta.Name): $message")
         }
     }
