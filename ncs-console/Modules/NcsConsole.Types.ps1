@@ -43,6 +43,16 @@ class NcsActionMemory {
     [datetime] $UpdatedAt = [datetime]::UtcNow
 }
 
+# Per-folder operator defaults applied to every play in that tree folder
+# (and inherited by descendants — see Resolve-NcsFolderDefaults). Stored on
+# NcsConsoleSettings.FolderDefaults keyed by "/"-joined tree display path
+# (e.g. "Imported/VMware/ESXi"). Blank values mean "no override at this level".
+class NcsFolderDefaults {
+    [string] $VaultPasswordFile = ""   # remote path passed to --vault-password-file
+    [string] $Inventory = ""           # remote path passed to -i
+    [hashtable] $ExtraVars = @{}       # merged into -e key=value flags
+}
+
 class NcsRunHistoryEntry {
     [string] $ActionId = ""
     [string] $Label = ""
@@ -87,10 +97,13 @@ class NcsConsoleSettings {
     [int] $ServerAliveIntervalSeconds = 15
     [int] $ServerAliveCountMax = 3
     [string] $LogDirectory = ""
-    [int] $SettingsVersion = 4
+    [int] $SettingsVersion = 5
     [string] $LastAction = ""
     # Per-action memory: maps action_id -> NcsActionMemory. Capped at 50 entries, LRU on save.
     [hashtable] $ActionState = @{}
+    # Per-folder defaults: maps tree display path -> NcsFolderDefaults.
+    # Inherited from ancestors at command-resolve time.
+    [hashtable] $FolderDefaults = @{}
     # Last 20 runs, oldest first. Drives the Recent listview.
     [System.Collections.Generic.List[NcsRunHistoryEntry]] $RunHistory = [System.Collections.Generic.List[NcsRunHistoryEntry]]::new()
 
@@ -100,6 +113,11 @@ class NcsConsoleSettings {
 
 class NcsActionRequest {
     [string] $Playbook
+    # Tree display path of the folder this action lives under (e.g.
+    # "Imported/VMware/ESXi"). Looked up against Settings.FolderDefaults to
+    # apply per-folder vault/inventory/extra-vars overrides. Blank means
+    # "use built-in defaults" (.vaultpass, inventory/production).
+    [string] $FolderPath = ""
     [string] $Limit = ""
     [string] $Tags = ""
     [bool] $CheckMode = $false

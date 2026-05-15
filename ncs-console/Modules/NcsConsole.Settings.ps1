@@ -92,6 +92,27 @@ function ConvertTo-NcsConsoleSettings {
         }
     }
 
+    if ($InputObject.PSObject.Properties.Name -contains "FolderDefaults" -and $null -ne $InputObject.FolderDefaults) {
+        foreach ($prop in $InputObject.FolderDefaults.PSObject.Properties) {
+            $fd = [NcsFolderDefaults]::new()
+            $src = $prop.Value
+            if ($null -ne $src) {
+                if ($src.PSObject.Properties.Name -contains "VaultPasswordFile") {
+                    $fd.VaultPasswordFile = [string] $src.VaultPasswordFile
+                }
+                if ($src.PSObject.Properties.Name -contains "Inventory") {
+                    $fd.Inventory = [string] $src.Inventory
+                }
+                if ($src.PSObject.Properties.Name -contains "ExtraVars" -and $null -ne $src.ExtraVars) {
+                    $ev = @{}
+                    foreach ($kv in $src.ExtraVars.PSObject.Properties) { $ev[$kv.Name] = [string] $kv.Value }
+                    $fd.ExtraVars = $ev
+                }
+            }
+            $settings.FolderDefaults[$prop.Name] = $fd
+        }
+    }
+
     if ($InputObject.PSObject.Properties.Name -contains "RunHistory" -and $null -ne $InputObject.RunHistory) {
         foreach ($entry in @($InputObject.RunHistory)) {
             if ($null -eq $entry) { continue }
@@ -176,6 +197,25 @@ function Save-NcsConsoleSettings {
         }
     }
 
+    $folderDefaults = [ordered]@{}
+    if ($null -ne $Settings.FolderDefaults -and $Settings.FolderDefaults.Count -gt 0) {
+        foreach ($key in ($Settings.FolderDefaults.Keys | Sort-Object)) {
+            $fd = $Settings.FolderDefaults[$key]
+            if ($null -eq $fd) { continue }
+            # Skip empty entries so the file doesn't accumulate cruft when an
+            # operator clears all three fields.
+            $hasValue = -not [string]::IsNullOrWhiteSpace($fd.VaultPasswordFile) `
+                -or -not [string]::IsNullOrWhiteSpace($fd.Inventory) `
+                -or ($null -ne $fd.ExtraVars -and $fd.ExtraVars.Count -gt 0)
+            if (-not $hasValue) { continue }
+            $folderDefaults[$key] = [ordered]@{
+                VaultPasswordFile = $fd.VaultPasswordFile
+                Inventory         = $fd.Inventory
+                ExtraVars         = $fd.ExtraVars
+            }
+        }
+    }
+
     $runHistory = @()
     if ($null -ne $Settings.RunHistory -and $Settings.RunHistory.Count -gt 0) {
         $start = [Math]::Max(0, $Settings.RunHistory.Count - 20)
@@ -224,6 +264,7 @@ function Save-NcsConsoleSettings {
         PlaybookTreeColumnWidth  = $Settings.PlaybookTreeColumnWidth
         PlaybookPropertiesColumnWidth = $Settings.PlaybookPropertiesColumnWidth
         ActionState              = $actionState
+        FolderDefaults           = $folderDefaults
         RunHistory               = $runHistory
     } | ConvertTo-Json -Depth 6
 

@@ -247,6 +247,25 @@
                                                 </StackPanel>
                                             </Border>
                                             <StackPanel x:Name="ActionOptionsPanel" Margin="{StaticResource MarginGapSm}" Visibility="Collapsed" />
+                                            <Expander x:Name="FolderDefaultsExpander" IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="{StaticResource MarginGapSm}" Visibility="Collapsed">
+                                                <Expander.Header>
+                                                    <TextBlock x:Name="FolderDefaultsHeaderText" Text="Folder defaults" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" />
+                                                </Expander.Header>
+                                                <StackPanel Margin="0,4,0,0">
+                                                    <TextBlock Text="Applies to every play in this folder (and descendants). Action-level options and Ad-hoc overrides still win on conflicts." TextWrapping="Wrap" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
+                                                    <TextBlock Text="Vault password file (remote path; blank = .vaultpass)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
+                                                    <TextBox x:Name="FolderVaultPasswordFileTextBox" ToolTip="Passed as --vault-password-file. Resolved relative to the remote repo unless absolute." />
+                                                    <TextBlock Text="Inventory (remote path; blank = inventory/production)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
+                                                    <TextBox x:Name="FolderInventoryTextBox" ToolTip="Passed as -i. Used only when Ad-hoc Hosts is empty." />
+                                                    <TextBlock Text="Extra vars (key=value per line)" Foreground="{StaticResource TextMutedBrush}" FontSize="{StaticResource FontSizeSm}" Margin="{StaticResource MarginGapSm}" />
+                                                    <TextBox x:Name="FolderExtraVarsTextBox" TextWrapping="Wrap" AcceptsReturn="True" Height="60" VerticalScrollBarVisibility="Auto" ToolTip="Passed as ansible-playbook -e for every play in this folder." />
+                                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                                        <Button x:Name="FolderDefaultsSaveButton" Content="Save folder defaults" ToolTip="Persist these values for the current folder" />
+                                                        <Button x:Name="FolderDefaultsClearButton" Content="Clear" Margin="6,0,0,0" ToolTip="Remove the folder's saved defaults" />
+                                                    </StackPanel>
+                                                    <TextBlock x:Name="FolderDefaultsInheritedText" Foreground="{StaticResource TextMutedBrush}" FontStyle="Italic" FontSize="{StaticResource FontSizeSm}" Margin="0,6,0,0" TextWrapping="Wrap" Visibility="Collapsed" />
+                                                </StackPanel>
+                                            </Expander>
                                             <Expander x:Name="AdHocExpander" IsExpanded="False" Style="{StaticResource SectionExpanderStyle}" Margin="{StaticResource MarginGapSm}">
                                                 <Expander.Header>
                                                     <TextBlock Text="Ad-hoc run (override inventory + credentials)" FontSize="{StaticResource FontSizeSm}" FontWeight="SemiBold" Foreground="{StaticResource TextMutedBrush}" />

@@ -429,6 +429,44 @@ function Write-NcsSessionLog {
     Set-Content -LiteralPath $Path -Value $content -Encoding UTF8
 }
 
+function Resolve-NcsFolderDefaults {
+    <#
+    .SYNOPSIS Walk Settings.FolderDefaults from the root of the action's tree
+    path down to the leaf folder, overlaying entries. Deepest non-empty value
+    wins per field; ExtraVars merge (deepest overrides per key). Empty/missing
+    folder path returns an empty NcsFolderDefaults.
+    #>
+    param(
+        [Parameter(Mandatory)] [NcsConsoleSettings] $Settings,
+        [string] $FolderPath
+    )
+
+    $resolved = [NcsFolderDefaults]::new()
+    if ([string]::IsNullOrWhiteSpace($FolderPath) -or $null -eq $Settings.FolderDefaults -or $Settings.FolderDefaults.Count -eq 0) {
+        return $resolved
+    }
+
+    $segments = $FolderPath -split "/"
+    for ($i = 1; $i -le $segments.Length; $i++) {
+        $key = ($segments[0..($i - 1)] -join "/")
+        if (-not $Settings.FolderDefaults.ContainsKey($key)) { continue }
+        $entry = $Settings.FolderDefaults[$key]
+        if ($null -eq $entry) { continue }
+        if (-not [string]::IsNullOrWhiteSpace($entry.VaultPasswordFile)) {
+            $resolved.VaultPasswordFile = $entry.VaultPasswordFile
+        }
+        if (-not [string]::IsNullOrWhiteSpace($entry.Inventory)) {
+            $resolved.Inventory = $entry.Inventory
+        }
+        if ($null -ne $entry.ExtraVars) {
+            foreach ($k in $entry.ExtraVars.Keys) {
+                $resolved.ExtraVars[$k] = [string] $entry.ExtraVars[$k]
+            }
+        }
+    }
+    return $resolved
+}
+
 function Resolve-NcsPlaybookCommand {
     param(
         [Parameter(Mandatory)]
@@ -437,15 +475,26 @@ function Resolve-NcsPlaybookCommand {
         [NcsActionRequest] $Request
     )
 
+    $folder = Resolve-NcsFolderDefaults -Settings $Settings -FolderPath $Request.FolderPath
+
     # Inventory: user-supplied hostnames become an inline inventory (trailing
-    # comma is how Ansible distinguishes a host list from a file path).
+    # comma is how Ansible distinguishes a host list from a file path). Folder
+    # default applies only when no AdHocHosts are given.
     $inventory = if (-not [string]::IsNullOrWhiteSpace($Request.AdHocHosts)) {
         (ConvertTo-NcsBashLiteral -Value ($Request.AdHocHosts.Trim() + ","))
+    } elseif (-not [string]::IsNullOrWhiteSpace($folder.Inventory)) {
+        (ConvertTo-NcsBashLiteral -Value $folder.Inventory)
     } else {
         "inventory/production"
     }
 
-    $command = "ansible-playbook -i $inventory $($Request.Playbook) --vault-password-file .vaultpass"
+    $vaultFile = if (-not [string]::IsNullOrWhiteSpace($folder.VaultPasswordFile)) {
+        (ConvertTo-NcsBashLiteral -Value $folder.VaultPasswordFile)
+    } else {
+        ".vaultpass"
+    }
+
+    $command = "ansible-playbook -i $inventory $($Request.Playbook) --vault-password-file $vaultFile"
 
     if (-not [string]::IsNullOrWhiteSpace($Request.AdHocUser)) {
         $command += " -u " + (ConvertTo-NcsBashLiteral -Value $Request.AdHocUser.Trim())
@@ -479,6 +528,15 @@ function Resolve-NcsPlaybookCommand {
 
     if (-not [string]::IsNullOrWhiteSpace($Request.Verbosity) -and $Request.Verbosity -ne "Normal") {
         $command += " $($Request.Verbosity)"
+    }
+
+    # Folder ExtraVars come first so the action's Options and AdHocExtraVars
+    # (later -e flags) win on key collisions — ansible-playbook applies -e
+    # left-to-right with later values overriding earlier ones.
+    if ($folder.ExtraVars.Count -gt 0) {
+        foreach ($key in $folder.ExtraVars.Keys) {
+            $command += " -e " + (ConvertTo-NcsBashLiteral -Value "$key=$($folder.ExtraVars[$key])")
+        }
     }
 
     if ($Request.Options.Count -gt 0) {
@@ -520,12 +578,25 @@ function Get-NcsRemoteShellCommand {
 
     $repo = ConvertTo-NcsRemotePathExpression -Value $Settings.RemoteRepoPath
     $actionCommand = Resolve-NcsPlaybookCommand -Settings $Settings -Request $Request
-    # Skip the inventory/production preflight when the caller supplied inline
-    # hosts — nothing under inventory/ is consulted for that invocation.
+    $folder = Resolve-NcsFolderDefaults -Settings $Settings -FolderPath $Request.FolderPath
+    # Skip the inventory preflight when the caller supplied inline hosts —
+    # nothing under inventory/ is consulted for that invocation. Otherwise
+    # check the folder-overridden path (file or dir) or the built-in default.
     $inventoryCheck = if ([string]::IsNullOrWhiteSpace($Request.AdHocHosts)) {
-        "test -d inventory/production || { echo 'Missing inventory/production/ on the remote repo.' >&2; exit 22; }"
+        if (-not [string]::IsNullOrWhiteSpace($folder.Inventory)) {
+            $invLit = ConvertTo-NcsBashLiteral -Value $folder.Inventory
+            "test -e $invLit || { echo 'Missing inventory path on the remote repo.' >&2; exit 22; }"
+        } else {
+            "test -d inventory/production || { echo 'Missing inventory/production/ on the remote repo.' >&2; exit 22; }"
+        }
     } else {
         ":"
+    }
+    $vaultCheck = if (-not [string]::IsNullOrWhiteSpace($folder.VaultPasswordFile)) {
+        $vaultLit = ConvertTo-NcsBashLiteral -Value $folder.VaultPasswordFile
+        "test -f $vaultLit || { echo 'Missing vault password file on the remote repo.' >&2; exit 23; }"
+    } else {
+        "test -f .vaultpass || { echo 'Missing .vaultpass in the remote repo.' >&2; exit 23; }"
     }
     $actionScript = @(
         "set -e"
@@ -539,7 +610,7 @@ function Get-NcsRemoteShellCommand {
         # (which scans /srv/samba/reports/data) can't see the data.
         "export NCS_REPORT_DIRECTORY=`"`${NCS_REPORT_DIRECTORY:-/srv/samba/reports/data}`""
         $inventoryCheck
-        "test -f .vaultpass || { echo 'Missing .vaultpass in the remote repo.' >&2; exit 23; }"
+        $vaultCheck
         "if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi"
         "command -v ansible-playbook >/dev/null 2>&1 || { echo 'ansible-playbook not found in .venv or PATH.' >&2; exit 24; }"
         "export PYTHONUNBUFFERED=1"

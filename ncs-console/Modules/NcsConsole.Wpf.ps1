@@ -746,6 +746,14 @@ function Get-NcsXamlControlMap {
         "ActionOptionsPanel",
         "ActionScrollViewer",
         "ExtraArgsTextBox",
+        "FolderDefaultsExpander",
+        "FolderDefaultsHeaderText",
+        "FolderVaultPasswordFileTextBox",
+        "FolderInventoryTextBox",
+        "FolderExtraVarsTextBox",
+        "FolderDefaultsSaveButton",
+        "FolderDefaultsClearButton",
+        "FolderDefaultsInheritedText",
         "AdHocExpander",
         "AdHocHostsTextBox",
         "AdHocUserTextBox",
@@ -1137,6 +1145,37 @@ function Get-NcsActionItemMap {
         }
         if ($group.ContainsKey('Children') -and $null -ne $group['Children']) {
             foreach ($kv in (Get-NcsActionItemMap -Groups $group['Children']).GetEnumerator()) {
+                $map[$kv.Key] = $kv.Value
+            }
+        }
+    }
+    return $map
+}
+
+function Get-NcsActionFolderMap {
+    <#
+    .SYNOPSIS Walk the action tree and produce action_id -> folder display
+    path (e.g. "Imported/VMware/ESXi"). Used to look up per-folder defaults
+    (vault, inventory, extra-vars) when resolving the ansible-playbook
+    command. Matches the keying scheme of Settings.FolderDefaults.
+    #>
+    param(
+        $Groups,
+        [string] $Prefix = ""
+    )
+
+    $map = @{}
+    foreach ($group in @($Groups)) {
+        $name = if ($null -ne $group -and $group.ContainsKey('Group')) { [string] $group['Group'] } else { "" }
+        $path = if ([string]::IsNullOrWhiteSpace($Prefix)) { $name } else { "$Prefix/$name" }
+        foreach ($item in @($group.Items)) {
+            $key = if ($item.ContainsKey('action_id')) { [string]$item.action_id } elseif ($item.ContainsKey('playbook')) { [string]$item.playbook } else { "" }
+            if (-not [string]::IsNullOrWhiteSpace($key)) {
+                $map[$key] = $path
+            }
+        }
+        if ($group.ContainsKey('Children') -and $null -ne $group['Children']) {
+            foreach ($kv in (Get-NcsActionFolderMap -Groups $group['Children'] -Prefix $path).GetEnumerator()) {
                 $map[$kv.Key] = $kv.Value
             }
         }
@@ -1549,6 +1588,128 @@ function Restore-NcsActionMemory {
     return $true
 }
 
+function ConvertFrom-NcsFolderExtraVarsText {
+    <#
+    .SYNOPSIS Parse a multi-line "key=value" textbox into a hashtable.
+    Mirrors ConvertFrom-NcsAdHocExtraVars; kept separate so changes to one
+    side don't accidentally relax the other's parsing rules.
+    #>
+    param([string] $Text)
+    $result = @{}
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $result }
+    foreach ($line in $Text -split "`r?`n") {
+        $trimmed = $line.Trim()
+        if ($trimmed -eq "" -or $trimmed.StartsWith("#")) { continue }
+        $eq = $trimmed.IndexOf("=")
+        if ($eq -lt 1) { continue }
+        $key = $trimmed.Substring(0, $eq).Trim()
+        $val = $trimmed.Substring($eq + 1).Trim()
+        if ($key -ne "") { $result[$key] = $val }
+    }
+    return $result
+}
+
+function ConvertTo-NcsFolderExtraVarsText {
+    param([hashtable] $ExtraVars)
+    if ($null -eq $ExtraVars -or $ExtraVars.Count -eq 0) { return "" }
+    $lines = foreach ($key in ($ExtraVars.Keys | Sort-Object)) {
+        "{0}={1}" -f $key, $ExtraVars[$key]
+    }
+    return ($lines -join [Environment]::NewLine)
+}
+
+function Update-NcsFolderDefaultsPanel {
+    <#
+    .SYNOPSIS Populate the Folder Defaults expander for the currently-selected
+    action. Shows the folder path in the header, fills the three editors from
+    the exact-match entry (if any), and surfaces an "Inherits from <ancestor>"
+    line when nearer ancestors contribute values that the leaf folder doesn't.
+    #>
+    param(
+        [Parameter(Mandatory)] [hashtable] $Controls,
+        [Parameter(Mandatory)] [NcsConsoleSettings] $Settings,
+        [string] $FolderPath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($FolderPath)) {
+        $Controls.FolderDefaultsExpander.Visibility = "Collapsed"
+        return
+    }
+
+    $Controls.FolderDefaultsExpander.Visibility = "Visible"
+    $Controls.FolderDefaultsHeaderText.Text = "Folder defaults — $FolderPath"
+
+    $entry = if ($Settings.FolderDefaults.ContainsKey($FolderPath)) { $Settings.FolderDefaults[$FolderPath] } else { $null }
+    if ($null -ne $entry) {
+        $Controls.FolderVaultPasswordFileTextBox.Text = [string] $entry.VaultPasswordFile
+        $Controls.FolderInventoryTextBox.Text         = [string] $entry.Inventory
+        $Controls.FolderExtraVarsTextBox.Text         = ConvertTo-NcsFolderExtraVarsText -ExtraVars $entry.ExtraVars
+    } else {
+        $Controls.FolderVaultPasswordFileTextBox.Text = ""
+        $Controls.FolderInventoryTextBox.Text         = ""
+        $Controls.FolderExtraVarsTextBox.Text         = ""
+    }
+
+    # Show what's inherited from ancestors (excluding the leaf itself) so the
+    # operator knows whether they're seeing all the defaults that will apply.
+    $resolvedAncestors = [NcsFolderDefaults]::new()
+    $segments = $FolderPath -split "/"
+    for ($i = 1; $i -lt $segments.Length; $i++) {
+        $key = ($segments[0..($i - 1)] -join "/")
+        if (-not $Settings.FolderDefaults.ContainsKey($key)) { continue }
+        $anc = $Settings.FolderDefaults[$key]
+        if ($null -eq $anc) { continue }
+        if (-not [string]::IsNullOrWhiteSpace($anc.VaultPasswordFile)) { $resolvedAncestors.VaultPasswordFile = $anc.VaultPasswordFile }
+        if (-not [string]::IsNullOrWhiteSpace($anc.Inventory)) { $resolvedAncestors.Inventory = $anc.Inventory }
+        if ($null -ne $anc.ExtraVars) {
+            foreach ($k in $anc.ExtraVars.Keys) { $resolvedAncestors.ExtraVars[$k] = [string] $anc.ExtraVars[$k] }
+        }
+    }
+
+    $parts = @()
+    if (-not [string]::IsNullOrWhiteSpace($resolvedAncestors.VaultPasswordFile)) {
+        $parts += "vault=$($resolvedAncestors.VaultPasswordFile)"
+    }
+    if (-not [string]::IsNullOrWhiteSpace($resolvedAncestors.Inventory)) {
+        $parts += "inventory=$($resolvedAncestors.Inventory)"
+    }
+    if ($resolvedAncestors.ExtraVars.Count -gt 0) {
+        $parts += "extra-vars: " + (($resolvedAncestors.ExtraVars.Keys | Sort-Object) -join ", ")
+    }
+    if ($parts.Count -gt 0) {
+        $Controls.FolderDefaultsInheritedText.Text = "Inherited from a parent folder: " + ($parts -join "; ")
+        $Controls.FolderDefaultsInheritedText.Visibility = "Visible"
+    } else {
+        $Controls.FolderDefaultsInheritedText.Visibility = "Collapsed"
+    }
+}
+
+function Save-NcsFolderDefaultsFromPanel {
+    param(
+        [Parameter(Mandatory)] [hashtable] $Controls,
+        [Parameter(Mandatory)] [NcsConsoleSettings] $Settings,
+        [Parameter(Mandatory)] [string] $FolderPath
+    )
+
+    $vault     = $Controls.FolderVaultPasswordFileTextBox.Text.Trim()
+    $inventory = $Controls.FolderInventoryTextBox.Text.Trim()
+    $extra     = ConvertFrom-NcsFolderExtraVarsText -Text $Controls.FolderExtraVarsTextBox.Text
+
+    $hasValue = (-not [string]::IsNullOrWhiteSpace($vault)) -or (-not [string]::IsNullOrWhiteSpace($inventory)) -or ($extra.Count -gt 0)
+    if (-not $hasValue) {
+        if ($Settings.FolderDefaults.ContainsKey($FolderPath)) {
+            $Settings.FolderDefaults.Remove($FolderPath)
+        }
+        return
+    }
+
+    $fd = [NcsFolderDefaults]::new()
+    $fd.VaultPasswordFile = $vault
+    $fd.Inventory         = $inventory
+    $fd.ExtraVars         = $extra
+    $Settings.FolderDefaults[$FolderPath] = $fd
+}
+
 function Get-NcsControlValues {
     param([System.Windows.Controls.Panel] $Panel)
     $values = @{}
@@ -1619,6 +1780,17 @@ function Set-NcsRequestFromControls {
     $Request.AdHocBecome = [bool] $Controls.AdHocBecomeCheckBox.IsChecked
     $Request.AdHocBecomePassword = $Controls.AdHocBecomePasswordBox.Password
     $Request.AdHocExtraVars = ConvertFrom-NcsAdHocExtraVars -Text $Controls.AdHocExtraVarsTextBox.Text
+
+    # Folder path drives the per-folder vault/inventory/extra-vars overrides
+    # applied in Resolve-NcsPlaybookCommand. Pulled from the tree's selection
+    # rather than passed in so callers don't have to know which action was
+    # picked — Update-NcsCommandPreview, Run, and Schedule all go through here.
+    $actionId = Get-NcsTreeViewSelection -Controls $Controls -TreeViewName "ActionTreeView"
+    if (-not [string]::IsNullOrWhiteSpace($actionId) `
+        -and $null -ne $script:ActionFolderMap `
+        -and $script:ActionFolderMap.ContainsKey($actionId)) {
+        $Request.FolderPath = [string] $script:ActionFolderMap[$actionId]
+    }
 }
 
 function ConvertFrom-NcsAdHocExtraVars {
@@ -2683,6 +2855,10 @@ function Show-NcsConsoleApp {
         $controls.ActionTagsTextBox.Text  = ""
         Update-NcsActionOptions -Controls $controls -ActionItem $matchedAction
         [void] (Restore-NcsActionMemory -Controls $controls -Settings $state.Settings -ActionId $actionId)
+        $folderPath = if (-not [string]::IsNullOrWhiteSpace($actionId) -and $null -ne $script:ActionFolderMap -and $script:ActionFolderMap.ContainsKey($actionId)) {
+            [string] $script:ActionFolderMap[$actionId]
+        } else { "" }
+        Update-NcsFolderDefaultsPanel -Controls $controls -Settings $state.Settings -FolderPath $folderPath
         $script:NcsPreviousActionId = $actionId
         & $populatePlaybookTags $playbook "ActionTagsTree" "ActionTagsEmptyText"
         & $refreshPreview
@@ -2731,6 +2907,50 @@ function Show-NcsConsoleApp {
             & $refreshPreview
         } catch {
             $controls.StatusTextBlock.Text = "Failed to save settings: $($_.Exception.Message)"
+        }
+    })
+
+    $getSelectedFolderPath = {
+        $actionId = Get-NcsTreeViewSelection -Controls $controls -TreeViewName "ActionTreeView"
+        if (-not [string]::IsNullOrWhiteSpace($actionId) -and $null -ne $script:ActionFolderMap -and $script:ActionFolderMap.ContainsKey($actionId)) {
+            return [string] $script:ActionFolderMap[$actionId]
+        }
+        return ""
+    }
+
+    $controls.FolderDefaultsSaveButton.Add_Click({
+        try {
+            $folderPath = & $getSelectedFolderPath
+            if ([string]::IsNullOrWhiteSpace($folderPath)) {
+                $controls.StatusTextBlock.Text = "Select a playbook before saving folder defaults."
+                return
+            }
+            Save-NcsFolderDefaultsFromPanel -Controls $controls -Settings $state.Settings -FolderPath $folderPath
+            Save-NcsConsoleSettings -Settings $state.Settings
+            Update-NcsFolderDefaultsPanel -Controls $controls -Settings $state.Settings -FolderPath $folderPath
+            $controls.StatusTextBlock.Text = "Saved folder defaults for $folderPath."
+            & $refreshPreview
+        } catch {
+            $controls.StatusTextBlock.Text = "Failed to save folder defaults: $($_.Exception.Message)"
+        }
+    })
+
+    $controls.FolderDefaultsClearButton.Add_Click({
+        try {
+            $folderPath = & $getSelectedFolderPath
+            if ([string]::IsNullOrWhiteSpace($folderPath)) {
+                $controls.StatusTextBlock.Text = "Select a playbook before clearing folder defaults."
+                return
+            }
+            if ($state.Settings.FolderDefaults.ContainsKey($folderPath)) {
+                $state.Settings.FolderDefaults.Remove($folderPath)
+            }
+            Save-NcsConsoleSettings -Settings $state.Settings
+            Update-NcsFolderDefaultsPanel -Controls $controls -Settings $state.Settings -FolderPath $folderPath
+            $controls.StatusTextBlock.Text = "Cleared folder defaults for $folderPath."
+            & $refreshPreview
+        } catch {
+            $controls.StatusTextBlock.Text = "Failed to clear folder defaults: $($_.Exception.Message)"
         }
     })
 
@@ -3115,6 +3335,7 @@ function Show-NcsConsoleApp {
     $script:ScheduleEntries = [System.Collections.Generic.List[NcsScheduleEntry]]::new()
     $script:EditingScheduleIndex = -1
     $script:ActionItemMap = @{}
+    $script:ActionFolderMap = @{}
     $script:PlaybookTagsCache = @{}
     $script:SchedulesLoaded = $false
 
@@ -3388,6 +3609,7 @@ function Show-NcsConsoleApp {
                 Stop-NcsTagFetches
                 $script:ActionGroups = @()
                 $script:ActionItemMap = @{}
+                $script:ActionFolderMap = @{}
                 $script:PlaybookTagsCache = @{}
                 $controls.PlaybookSplitPane.Visibility = "Collapsed"
                 $controls.PlaybookPlaceholder.Visibility = "Visible"
@@ -3457,12 +3679,14 @@ function Show-NcsConsoleApp {
                 try {
                     $script:ActionGroups = Get-NcsRemotePlaybookTree -Settings $state.Settings
                     $script:ActionItemMap = Get-NcsActionItemMap -Groups $script:ActionGroups
+                    $script:ActionFolderMap = Get-NcsActionFolderMap -Groups $script:ActionGroups
                     if (@($script:ActionGroups).Length -eq 0) {
                         $statusParts += "No playbooks found."
                     }
                 } catch {
                     $script:ActionGroups = @()
                     $script:ActionItemMap = @{}
+                    $script:ActionFolderMap = @{}
                     $statusParts += "Playbook scan failed."
                 }
                 Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "action_id" -Expanded $true -LeafIcon $script:IconFile
@@ -3511,9 +3735,11 @@ function Show-NcsConsoleApp {
             try {
                 $script:ActionGroups = Get-NcsRemotePlaybookTree -Settings $state.Settings
                 $script:ActionItemMap = Get-NcsActionItemMap -Groups $script:ActionGroups
+                $script:ActionFolderMap = Get-NcsActionFolderMap -Groups $script:ActionGroups
             } catch {
                 $script:ActionGroups = @()
                 $script:ActionItemMap = @{}
+                $script:ActionFolderMap = @{}
                 Add-NcsConsoleLine -Controls $controls -Line "Playbook refresh failed: $($_.Exception.Message)"
             }
             Build-NcsTreeView -Controls $controls -TreeViewName "ActionTreeView" -Groups $script:ActionGroups -TagProperty "action_id" -Expanded $true -LeafIcon $script:IconFile
